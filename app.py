@@ -494,11 +494,6 @@
 #             create_download_with_auto_open(html_content, file_name, st.session_state.persona_name)
 
 
-# Solution with embedded interactionability
-# Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
-# This codbase is also set to connet API Keys directy from streamlit 
-# Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
-# This codbase is also set to connet API Keys directy from streamlit 
 # Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
 # This codbase is also set to connet API Keys directy from streamlit 
 import streamlit as st
@@ -520,6 +515,92 @@ def get_segment_options():
     """Helper to read segment options from the markdown file."""
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
+
+def create_vapi_widget(assistant_id, public_key, persona_name="Generated Persona"):
+    """Create VAPI floating widget"""
+    
+    # JavaScript code for VAPI widget
+    vapi_script = f"""
+    <script>
+        var vapiInstance = null;
+        const assistant = "{assistant_id}"; // Your assistant ID
+        const apiKey = "{public_key}"; // Your Public API key
+        const buttonConfig = {{
+            position: "bottom-right", // "bottom-left", "bottom-right", "top-left", "top-right"
+            offset: "40px", // Offset from the edge
+            width: "60px", // Width of the button
+            height: "60px", // Height of the button
+            idle: {{
+                color: `rgb(93, 254, 202)`,
+                type: "pill", // or "round"
+                title: "🎙️ Chat with {persona_name}",
+                subtitle: "Powered by CTC Health Solution",
+                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22zm0 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>`,
+            }},
+            loading: {{
+                color: `rgb(93, 124, 202)`,
+                title: "Connecting...",
+                subtitle: "Please wait",
+                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a6 6 0 0 0-6 6h2a4 4 0 0 1 4-4z"/></svg>`,
+            }},
+            active: {{
+                color: `rgb(255, 0, 0)`,
+                title: "🔴 Live",
+                subtitle: "Call in progress...",
+                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>`,
+            }},
+        }};
+
+        // Load VAPI SDK
+        (function (d, t) {{
+            var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
+            g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+            g.defer = true;
+            g.async = true;
+            s.parentNode.insertBefore(g, s);
+            
+            g.onload = function () {{
+                try {{
+                    vapiInstance = window.vapiSDK.run({{
+                        apiKey: apiKey, // mandatory
+                        assistant: assistant, // mandatory  
+                        config: buttonConfig, // optional
+                    }});
+                    
+                    console.log('✅ CTC Health Assistant loaded successfully!');
+                    
+                    // Optional: Listen to events
+                    if(vapiInstance) {{
+                        // You can add event listeners here if needed
+                        console.log('🎙️ VAPI instance ready for {persona_name}');
+                    }}
+                }} catch(e) {{
+                    console.error('❌ Error loading VAPI:', e);
+                }}
+            }};
+            
+            g.onerror = function() {{
+                console.error('❌ Failed to load VAPI SDK');
+            }};
+        }})(document, "script");
+    </script>
+    
+    <style>
+        /* Optional: Custom styling for VAPI widget */
+        .vapi-btn {{
+            z-index: 9999 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        }}
+        
+        /* Add some custom styling to make it more visible */
+        .vapi-btn:hover {{
+            transform: scale(1.05);
+            transition: transform 0.2s ease;
+        }}
+    </style>
+    """
+    
+    return vapi_script
 
 def create_vapi_widget_alternative(assistant_id, public_key, persona_name="Generated Persona"):
     """Alternative VAPI widget that loads inline instead of floating"""
@@ -1060,8 +1141,8 @@ if st.session_state.final_prompt:
                                 # Method 2: components.html with height
                                 components.html(vapi_widget_html, height=50, scrolling=False)
                                 st.success("✅ Widget loaded via components!")
-                            except:
-                                st.error("❌ Could not load floating widget.")
+                            except Exception as e:
+                                st.error(f"❌ Could not load floating widget: {str(e)}")
                 
                 # Option 2: Inline widget (more reliable)
                 with st.expander("🎯 Inline Widget (Alternative)", expanded=False):
@@ -1075,8 +1156,9 @@ if st.session_state.final_prompt:
                     
                     try:
                         components.html(vapi_inline_html, height=150, scrolling=False)
-                    except:
-                        st.error("❌ Could not load inline widget.")
+                        st.success("✅ Inline widget loaded!")
+                    except Exception as e:
+                        st.error(f"❌ Could not load inline widget: {str(e)}")
                 
                 # Option 3: Manual integration
                 with st.expander("🔧 Manual Integration", expanded=False):
