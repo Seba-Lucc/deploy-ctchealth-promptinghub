@@ -42,6 +42,6 @@ ENV/
 htmlcov/ 
 
 # virtualenv (Seba)
-prompting-env/
+deploy-ctc
 # MaccOS (Seba)
 .DS_Store
