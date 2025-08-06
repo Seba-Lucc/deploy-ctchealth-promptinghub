@@ -499,6 +499,8 @@
 # This codbase is also set to connet API Keys directy from streamlit 
 # Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
 # This codbase is also set to connet API Keys directy from streamlit 
+# Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
+# This codbase is also set to connet API Keys directy from streamlit 
 import streamlit as st
 import autoprompt
 from langchain_openai import ChatOpenAI
@@ -519,7 +521,115 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-def create_vapi_widget(assistant_id, public_key, persona_name="Generated Persona"):
+def create_vapi_widget_alternative(assistant_id, public_key, persona_name="Generated Persona"):
+    """Alternative VAPI widget that loads inline instead of floating"""
+    
+    vapi_script = f"""
+    <div style="text-align: center; padding: 20px; border: 2px solid #2E86AB; border-radius: 10px; background: #f8f9fa;">
+        <h4 style="color: #2E86AB; margin-bottom: 15px;">🎙️ {persona_name} Assistant</h4>
+        <button id="vapi-call-btn" onclick="startVapiCall()" 
+                style="background: #2E86AB; color: white; border: none; padding: 15px 30px; 
+                       border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold;">
+            🎙️ Start Voice Call
+        </button>
+        <div id="vapi-status" style="margin-top: 10px; font-size: 14px; color: #666;">
+            Ready to connect...
+        </div>
+    </div>
+
+    <script>
+        let vapiInstance = null;
+        let isCallActive = false;
+        
+        const assistant = "{assistant_id}";
+        const apiKey = "{public_key}";
+        
+        function updateStatus(message, color = '#666') {{
+            document.getElementById('vapi-status').innerHTML = message;
+            document.getElementById('vapi-status').style.color = color;
+        }}
+        
+        function updateButton(text, disabled = false) {{
+            const btn = document.getElementById('vapi-call-btn');
+            btn.innerHTML = text;
+            btn.disabled = disabled;
+            btn.style.opacity = disabled ? '0.6' : '1';
+        }}
+        
+        function startVapiCall() {{
+            if (isCallActive) {{
+                // End call
+                if (vapiInstance && vapiInstance.stop) {{
+                    vapiInstance.stop();
+                }}
+                isCallActive = false;
+                updateButton('🎙️ Start Voice Call');
+                updateStatus('Call ended', '#d32f2f');
+                return;
+            }}
+            
+            updateButton('🔄 Connecting...', true);
+            updateStatus('Connecting to {persona_name}...', '#1976d2');
+            
+            // Load VAPI SDK if not already loaded
+            if (!window.vapiSDK) {{
+                const script = document.createElement('script');
+                script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+                script.onload = function() {{
+                    initVapi();
+                }};
+                script.onerror = function() {{
+                    updateStatus('❌ Failed to load voice system', '#d32f2f');
+                    updateButton('🎙️ Start Voice Call');
+                }};
+                document.head.appendChild(script);
+            }} else {{
+                initVapi();
+            }}
+        }}
+        
+        function initVapi() {{
+            try {{
+                // Create a custom config for inline usage
+                const config = {{
+                    mode: 'inline', // This prevents the floating button
+                }};
+                
+                vapiInstance = window.vapiSDK.run({{
+                    apiKey: apiKey,
+                    assistant: assistant,
+                    config: config,
+                }});
+                
+                if (vapiInstance) {{
+                    isCallActive = true;
+                    updateButton('🔴 End Call');
+                    updateStatus('🟢 Call active - speak now!', '#2e7d32');
+                    
+                    // Listen for call end
+                    if (vapiInstance.on) {{
+                        vapiInstance.on('call-end', function() {{
+                            isCallActive = false;
+                            updateButton('🎙️ Start Voice Call');
+                            updateStatus('Call ended', '#d32f2f');
+                        }});
+                    }}
+                }} else {{
+                    throw new Error('Failed to initialize VAPI instance');
+                }}
+                
+            }} catch(e) {{
+                console.error('VAPI Error:', e);
+                updateStatus('❌ Connection failed: ' + e.message, '#d32f2f');
+                updateButton('🎙️ Start Voice Call');
+            }}
+        }}
+        
+        console.log('VAPI Alternative Widget loaded for {persona_name}');
+    </script>
+    """
+    
+    return vapi_script
     """Create VAPI widget embedded directly in Streamlit"""
     
     # JavaScript code for VAPI widget
@@ -730,6 +840,42 @@ if 'assistant_id' not in st.session_state:
 if 'persona_name' not in st.session_state:
     st.session_state.persona_name = ""
 
+# Demo Mode Toggle
+st.sidebar.markdown("## 🚀 Quick Demo")
+demo_mode = st.sidebar.checkbox(
+    "Enable Demo Mode", 
+    help="Skip all steps and jump directly to the testing interface with sample data"
+)
+
+if demo_mode:
+    st.sidebar.success("Demo Mode Enabled!")
+    if st.sidebar.button("🎯 Jump to Testing Interface", type="primary"):
+        # Set demo data
+        st.session_state.persona_details = {
+            'persona_header': 'Dr. Maria Rossi',
+            'full_persona_details': """
+## Demo Persona: Dr. Maria Rossi
+
+**Demographics:** 48-year-old oncologist, private practice in Milan, Italy
+
+**Specialty:** Breast cancer and immunotherapy
+
+**Psychographic Profile:**
+- Risk Tolerance: 0.7 (Moderately bold)
+- Brand Loyalty: 0.3 (Open to new options)  
+- Research Orientation: 0.8 (Data-driven)
+- Recognition Need: 0.2 (Low-profile)
+- Patient Empathy: 0.9 (Strong advocate)
+
+**Clinical Context:** Specializes in early-stage breast cancer treatment with focus on personalized medicine approaches.
+            """
+        }
+        st.session_state.final_prompt = "You are Dr. Maria Rossi, a 48-year-old oncologist specializing in breast cancer treatment. You practice evidence-based medicine and prioritize patient care above all else. Respond as this persona would in a medical consultation context."
+        st.session_state.persona_name = "Dr. Maria Rossi"
+        # Set a demo assistant ID (you can replace with a real one)
+        st.session_state.assistant_id = "demo_assistant_123"
+        st.rerun()
+
 # Step 1: Build Persona Details
 if not st.session_state.persona_details:
     if st.button("📝 Build Persona Details", type="primary"):
@@ -742,26 +888,49 @@ if not st.session_state.persona_details:
     - Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
     """
 
-        with st.spinner("🤖 CTC Health AI agents are building the persona... This may take a moment."):
-            persona_state = autoprompt.build_persona_details(
-                header_input=header_input,
-                segment_input=segment_choice,
-                context_input=context_input,
-                psychographics_input=psychographics_input_str,
-                objectives_input=objectives_input
-            )
-            st.session_state.persona_details = persona_state
-            
-            # Extract persona name from header
-            if persona_state and 'persona_header' in persona_state:
-                header_text = persona_state['persona_header']
-                if 'Dr.' in header_text:
-                    name_part = header_text.split('Dr.')[1].split(',')[0].split(' is a')[0].strip()
-                    st.session_state.persona_name = f"Dr. {name_part}"
-                else:
-                    st.session_state.persona_name = "Generated Persona"
-        
-        st.success("🎉 Persona Details Built Successfully!")
+        if demo_mode:
+            # Skip AI processing in demo mode
+            st.session_state.persona_details = {
+                'persona_header': 'Dr. Maria Rossi',
+                'full_persona_details': """
+## Demo Persona: Dr. Maria Rossi
+
+**Demographics:** 48-year-old oncologist, private practice in Milan, Italy
+
+**Specialty:** Breast cancer and immunotherapy
+
+**Psychographic Profile:**
+- Risk Tolerance: 0.7 (Moderately bold)
+- Brand Loyalty: 0.3 (Open to new options)  
+- Research Orientation: 0.8 (Data-driven)
+- Recognition Need: 0.2 (Low-profile)
+- Patient Empathy: 0.9 (Strong advocate)
+
+**Clinical Context:** Specializes in early-stage breast cancer treatment with focus on personalized medicine approaches.
+                """
+            }
+            st.session_state.persona_name = "Dr. Maria Rossi"
+            st.success("🎉 Demo Persona Details Loaded!")
+        else:
+            with st.spinner("🤖 CTC Health AI agents are building the persona... This may take a moment."):
+                persona_state = autoprompt.build_persona_details(
+                    header_input=header_input,
+                    segment_input=segment_choice,
+                    context_input=context_input,
+                    psychographics_input=psychographics_input_str,
+                    objectives_input=objectives_input
+                )
+                st.session_state.persona_details = persona_state
+                
+                # Extract persona name from header
+                if persona_state and 'persona_header' in persona_state:
+                    header_text = persona_state['persona_header']
+                    if 'Dr.' in header_text:
+                        name_part = header_text.split('Dr.')[1].split(',')[0].split(' is a')[0].strip()
+                        st.session_state.persona_name = f"Dr. {name_part}"
+                    else:
+                        st.session_state.persona_name = "Generated Persona"
+                st.success("🎉 Persona Details Built Successfully!")
 
 # Step 2: Show persona details and generate final prompt
 if st.session_state.persona_details:
@@ -770,10 +939,15 @@ if st.session_state.persona_details:
     st.markdown(st.session_state.persona_details['full_persona_details'])
 
     if st.button("🚀 Confirm and Generate System Prompt", type="primary"):
-        with st.spinner("🤖 CTC Health AI writers are crafting the final prompt..."):
-            final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
-            st.session_state.final_prompt = final_prompt
-        st.success("🎉 System Prompt Generated Successfully!")
+        if demo_mode:
+            # Skip AI processing in demo mode
+            st.session_state.final_prompt = "You are Dr. Maria Rossi, a 48-year-old oncologist specializing in breast cancer treatment. You practice evidence-based medicine and prioritize patient care above all else. Respond as this persona would in a medical consultation context."
+            st.success("🎉 Demo System Prompt Generated!")
+        else:
+            with st.spinner("🤖 CTC Health AI writers are crafting the final prompt..."):
+                final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
+                st.session_state.final_prompt = final_prompt
+            st.success("🎉 System Prompt Generated Successfully!")
 
 # Step 3: Create assistant and provide testing
 if st.session_state.final_prompt:
@@ -797,20 +971,27 @@ if st.session_state.final_prompt:
         # Create assistant if not already created
         if not st.session_state.assistant_id:
             if st.button("🎙️ Create CTC Health Assistant", type="primary"):
-                with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
-                    assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
-                    assistant_id = autoprompt.create_vapi_assistant(
-                        api_key=vapi_private_key,
-                        system_prompt=st.session_state.final_prompt,
-                        name=assistant_name
-                    )
-                    if assistant_id:
-                        st.session_state.assistant_id = assistant_id
-                        st.success(f"✅ CTC Health Assistant created successfully!")
-                        # Auto-rerun to show testing interface
-                        st.rerun()
-                    else:
-                        st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
+                if demo_mode:
+                    # Skip VAPI call in demo mode
+                    st.session_state.assistant_id = f"demo_assistant_{int(time.time())}"
+                    st.success("✅ Demo CTC Health Assistant created!")
+                    st.info("ℹ️ In demo mode, the voice widget will not be functional. Add real VAPI keys to test with voice.")
+                    st.rerun()
+                else:
+                    with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
+                        assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
+                        assistant_id = autoprompt.create_vapi_assistant(
+                            api_key=vapi_private_key,
+                            system_prompt=st.session_state.final_prompt,
+                            name=assistant_name
+                        )
+                        if assistant_id:
+                            st.session_state.assistant_id = assistant_id
+                            st.success(f"✅ CTC Health Assistant created successfully!")
+                            # Auto-rerun to show testing interface
+                            st.rerun()
+                        else:
+                            st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
         
         # Show testing interface if assistant is created
         if st.session_state.assistant_id:
@@ -854,16 +1035,81 @@ if st.session_state.final_prompt:
                     **Status:** ✅ Active and ready for testing
                     """)
             
-            # Embed the VAPI widget
-            vapi_widget_html = create_vapi_widget(
-                assistant_id=st.session_state.assistant_id,
-                public_key=vapi_public_key,
-                persona_name=st.session_state.persona_name
-            )
-            
-            # Inject the VAPI widget into the page
-            components.html(vapi_widget_html, height=0, scrolling=False)
-            
-            st.markdown("---")
-            st.markdown("**🎙️ The voice assistant button should appear in the bottom-right corner of your screen.**")
-            st.markdown("*If you don't see it immediately, wait a few seconds for it to load or refresh the page.*")
+            # Embed the VAPI widget (only if not in demo mode)
+            if not demo_mode and vapi_public_key and "YOUR_VAPI" not in vapi_public_key:
+                st.markdown("### 🎙️ Voice Assistant Interface")
+                
+                # Option 1: Try the floating widget
+                with st.expander("🚀 Floating Widget (Recommended)", expanded=True):
+                    st.info("This will add a floating button in the bottom-right corner of your screen.")
+                    
+                    if st.button("Load Floating Widget", key="floating_widget"):
+                        vapi_widget_html = create_vapi_widget(
+                            assistant_id=st.session_state.assistant_id,
+                            public_key=vapi_public_key,
+                            persona_name=st.session_state.persona_name
+                        )
+                        
+                        # Try multiple methods
+                        try:
+                            # Method 1: st.html (if available)
+                            st.html(vapi_widget_html)
+                            st.success("✅ Floating widget loaded!")
+                        except AttributeError:
+                            try:
+                                # Method 2: components.html with height
+                                components.html(vapi_widget_html, height=50, scrolling=False)
+                                st.success("✅ Widget loaded via components!")
+                            except:
+                                st.error("❌ Could not load floating widget.")
+                
+                # Option 2: Inline widget (more reliable)
+                with st.expander("🎯 Inline Widget (Alternative)", expanded=False):
+                    st.info("This creates a button directly in the page.")
+                    
+                    vapi_inline_html = create_vapi_widget_alternative(
+                        assistant_id=st.session_state.assistant_id,
+                        public_key=vapi_public_key,
+                        persona_name=st.session_state.persona_name
+                    )
+                    
+                    try:
+                        components.html(vapi_inline_html, height=150, scrolling=False)
+                    except:
+                        st.error("❌ Could not load inline widget.")
+                
+                # Option 3: Manual integration
+                with st.expander("🔧 Manual Integration", expanded=False):
+                    st.markdown("If the widgets above don't work, copy this code and paste it in your browser's developer console:")
+                    
+                    manual_code = f"""
+// Paste this in your browser console (F12)
+const script = document.createElement('script');
+script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+script.onload = function() {{
+    window.vapiSDK.run({{
+        apiKey: "{vapi_public_key}",
+        assistant: "{st.session_state.assistant_id}",
+        config: {{
+            position: "bottom-right",
+            offset: "40px",
+            width: "60px", 
+            height: "60px"
+        }}
+    }});
+}};
+document.head.appendChild(script);
+"""
+                    st.code(manual_code, language='javascript')
+                    
+                # Debug section
+                with st.expander("🐛 Debug Information"):
+                    st.json({
+                        "assistant_id": st.session_state.assistant_id,
+                        "public_key_preview": f"{vapi_public_key[:10]}...",
+                        "persona_name": st.session_state.persona_name,
+                        "streamlit_version": st.__version__
+                    })
+                    
+            else:
+                st.info("🎯 **Demo Mode Active** - The voice widget is disabled. Enable real VAPI keys and disable demo mode to test with voice.")
