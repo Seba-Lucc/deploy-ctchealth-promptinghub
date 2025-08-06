@@ -17,7 +17,7 @@ from functools import partial
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
-# from IPython.display import Image, display
+from IPython.display import Image, display
 from langsmith import traceable # For tracing agent execution on LangSmith
 
 # Load environment variables from .env file
@@ -63,7 +63,7 @@ def read_file_content(file_path: str) -> str:
         return ""
 
 
-def create_vapi_assistant(api_key: str, system_prompt: str, name: str = None):
+def create_vapi_assistant(api_key: str, system_prompt: str, name: str):
     """
     Creates a new Vapi assistant using the provided system prompt.
     """
@@ -85,71 +85,13 @@ def create_vapi_assistant(api_key: str, system_prompt: str, name: str = None):
                 "provider": "11labs",
                 "voiceId": "21m00Tcm4TlvDq8ikWAM" # Default voice, can be changed
             },
-            first_message="Alright, I'm running between patients all day, so we'll need to keep this focused. Which company are you with again?"
+            first_message="Hello, I'm ready to start our role-play session."
         )
         print(f"✅ Vapi assistant created successfully. ID: {assistant.id}")
         return assistant.id
     except Exception as e:
         print(f"❌ Error creating Vapi assistant: {e}")
         return None
-
-# def create_vapi_assistant(api_key: str, system_prompt: str, name: str):
-#     """
-#     Creates a new Vapi assistant using the provided system prompt.
-#     Returns the assistant ID if successful, None otherwise.
-#     """
-#     print("--- 📞 Creating Vapi Assistant ---")
-#     try:
-#         vapi = Vapi(token=api_key)
-        
-#         # Enhanced assistant configuration
-#         assistant_config = {
-#             "name": name,
-#             "model": {
-#                 "provider": "openai",
-#                 "model": "gpt-4o",
-#                 "temperature": 0.7,
-#                 "messages": [{
-#                     "role": "system",
-#                     "content": system_prompt
-#                 }]
-#             },
-#             "voice": {
-#                 "provider": "11labs",
-#                 "voiceId": "21m00Tcm4TlvDq8ikWAM"  # Rachel voice - professional and clear
-#             },
-#             "first_message": "Hello! I'm ready to begin our role-play session. How can I help you today?",
-#         }
-        
-#         assistant = vapi.assistants.create(**assistant_config)
-        
-#         print(f"✅ Vapi assistant created successfully!")
-#         print(f"   - Name: {name}")
-#         print(f"   - ID: {assistant.id}")
-#         print(f"   - Model: {assistant_config['model']['model']}")
-#         print(f"   - Voice: {assistant_config['voice']['provider']}")
-        
-#         return assistant.id
-        
-#     except Exception as e:
-#         print(f"❌ Error creating Vapi assistant: {e}")
-#         # More detailed error logging
-#         if hasattr(e, 'response'):
-#             print(f"   Response status: {e.response.status_code if hasattr(e.response, 'status_code') else 'N/A'}")
-#             print(f"   Response text: {e.response.text if hasattr(e.response, 'text') else 'N/A'}")
-#         return None
-    
-# def get_vapi_assistant_info(api_key: str, assistant_id: str):
-#     """
-#     Retrieves information about a VAPI assistant.
-#     """
-#     # Funzione completamente nuova per ottenere info assistente
-
-# def delete_vapi_assistant(api_key: str, assistant_id: str):
-#     """
-#     Deletes a VAPI assistant.
-#     """
-#     # Funzione completamente nuova per eliminare assistente
 
 
 # --- Persona Construction Agents (5 Parts) ---
