@@ -498,6 +498,8 @@
 # app.py
 # Dashboard that create the system prompt and create the assistant, it can be interacted through embedded Vapi widget
 # This codebase is also set to connect API Keys directly from streamlit 
+# Dashboard that create the system prompt and create the assistant, it can be interacted through embedded Vapi widget
+# This codebase is also set to connect API Keys directly from streamlit 
 import streamlit as st
 import autoprompt
 from langchain_openai import ChatOpenAI
@@ -516,9 +518,9 @@ def get_segment_options():
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
 def create_vapi_react_widget(assistant_id, public_key):
-    """Creates an embedded Vapi widget using React with JSX for better compatibility"""
+    """Creates an embedded Vapi widget using the official Vapi script tag approach"""
     
-    # React implementation with JSX and Babel transpilation
+    # Using the official Vapi implementation from their documentation
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -526,11 +528,6 @@ def create_vapi_react_widget(assistant_id, public_key):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Vapi Voice Assistant</title>
-        
-        <!-- React, ReactDOM and Babel -->
-        <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
         
         <style>
             * {{
@@ -549,341 +546,223 @@ def create_vapi_react_widget(assistant_id, public_key):
                 padding: 20px;
             }}
             
-            @keyframes pulse {{
-                0% {{ opacity: 1; }}
-                50% {{ opacity: 0.5; }}
-                100% {{ opacity: 1; }}
-            }}
-            
-            .widget-container {{
+            .container {{
                 width: 100%;
-                max-width: 500px;
-                margin: 0 auto;
+                max-width: 600px;
                 text-align: center;
             }}
             
-            .start-button {{
-                background: #12A594;
-                color: #fff;
-                border: none;
-                border-radius: 50px;
-                padding: 16px 32px;
-                font-size: 18px;
-                font-weight: bold;
-                cursor: pointer;
-                box-shadow: 0 4px 12px rgba(18, 165, 148, 0.3);
-                transition: all 0.3s ease;
-                display: inline-flex;
-                align-items: center;
-                gap: 10px;
-            }}
-            
-            .start-button:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 6px 16px rgba(18, 165, 148, 0.4);
-            }}
-            
-            .start-button:active {{
-                transform: translateY(0);
-            }}
-            
-            .call-interface {{
-                background: #fff;
+            .status-message {{
+                padding: 20px;
+                margin: 20px 0;
                 border-radius: 12px;
-                padding: 24px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-                border: 1px solid #e1e5e9;
+                font-size: 16px;
+                font-weight: 500;
             }}
             
-            .status-bar {{
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 20px;
-                padding-bottom: 16px;
-                border-bottom: 1px solid #e5e7eb;
+            .status-loading {{
+                background: #e3f2fd;
+                color: #1976d2;
             }}
             
-            .status-indicator {{
-                display: flex;
-                align-items: center;
-                gap: 10px;
+            .status-ready {{
+                background: #e8f5e9;
+                color: #2e7d32;
             }}
             
-            .status-dot {{
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                background: #12A594;
+            .status-error {{
+                background: #ffebee;
+                color: #c62828;
             }}
             
-            .status-dot.speaking {{
-                background: #ff4444;
-                animation: pulse 1s infinite;
-            }}
-            
-            .end-button {{
-                background: #ff4444;
-                color: #fff;
-                border: none;
-                border-radius: 8px;
-                padding: 8px 16px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-            }}
-            
-            .end-button:hover {{
-                background: #dc2626;
-            }}
-            
-            .transcript-area {{
-                max-height: 250px;
-                overflow-y: auto;
-                padding: 16px;
-                background: #f8f9fa;
-                border-radius: 8px;
-                text-align: left;
-            }}
-            
-            .transcript-message {{
-                margin-bottom: 12px;
-                padding: 10px 14px;
+            .info-box {{
+                background: white;
+                padding: 20px;
                 border-radius: 12px;
-                max-width: 80%;
-                word-wrap: break-word;
-                font-size: 14px;
-                line-height: 1.4;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                margin-top: 20px;
             }}
             
-            .user-message {{
-                background: #12A594;
-                color: white;
-                margin-left: auto;
-                text-align: right;
+            .info-box h3 {{
+                color: #333;
+                margin-bottom: 15px;
             }}
             
-            .assistant-message {{
-                background: #333;
-                color: white;
-                margin-right: auto;
-            }}
-            
-            .empty-transcript {{
-                text-align: center;
-                color: #999;
-                font-style: italic;
-                padding: 40px;
-            }}
-            
-            .loading-state {{
-                padding: 60px;
-                text-align: center;
+            .info-box p {{
                 color: #666;
+                line-height: 1.6;
+                margin-bottom: 10px;
             }}
             
-            .error-state {{
-                padding: 40px;
-                text-align: center;
-                color: #dc2626;
-                background: #fee;
-                border-radius: 12px;
+            /* Hide the default Vapi button and create our own trigger */
+            .vapi-btn {{
+                background: #12A594 !important;
+                color: white !important;
+                border: none !important;
+                padding: 16px 32px !important;
+                border-radius: 50px !important;
+                font-size: 18px !important;
+                font-weight: bold !important;
+                cursor: pointer !important;
+                box-shadow: 0 4px 12px rgba(18, 165, 148, 0.3) !important;
+                transition: all 0.3s ease !important;
+                margin: 20px auto !important;
+                display: inline-block !important;
+            }}
+            
+            .vapi-btn:hover {{
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 16px rgba(18, 165, 148, 0.4) !important;
             }}
         </style>
     </head>
     <body>
-        <div id="root"></div>
-        
-        <script type="text/babel">
-            const {{ useState, useEffect, useRef }} = React;
+        <div class="container">
+            <div id="status" class="status-message status-loading">
+                🔄 Initializing voice assistant...
+            </div>
             
-            // Vapi SDK will be loaded dynamically
-            let VapiSDK = null;
+            <div id="button-container" style="display: none;">
+                <button id="start-button" class="vapi-btn" onclick="startVapiCall()">
+                    🎤 Talk to Assistant
+                </button>
+            </div>
             
-            const VapiWidget = () => {{
-                const [vapi, setVapi] = useState(null);
-                const [isConnected, setIsConnected] = useState(false);
-                const [isSpeaking, setIsSpeaking] = useState(false);
-                const [transcript, setTranscript] = useState([]);
-                const [isLoading, setIsLoading] = useState(true);
-                const [error, setError] = useState(null);
-                
-                const apiKey = '{public_key}';
-                const assistantId = '{assistant_id}';
-                
-                useEffect(() => {{
-                    // Load Vapi SDK dynamically
-                    const loadVapiSDK = async () => {{
-                        try {{
-                            const script = document.createElement('script');
-                            script.type = 'module';
-                            script.innerHTML = `
-                                import Vapi from 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.2.0/+esm';
-                                window.VapiSDK = Vapi;
-                                window.dispatchEvent(new Event('vapi-sdk-loaded'));
-                            `;
-                            document.head.appendChild(script);
-                            
-                            await new Promise((resolve) => {{
-                                window.addEventListener('vapi-sdk-loaded', resolve, {{ once: true }});
-                            }});
-                            
-                            VapiSDK = window.VapiSDK;
-                            const vapiInstance = new VapiSDK(apiKey);
-                            
-                            // Set up event listeners
-                            vapiInstance.on('call-start', () => {{
-                                console.log('Call started');
-                                setIsConnected(true);
-                                setTranscript([]);
-                            }});
-                            
-                            vapiInstance.on('call-end', () => {{
-                                console.log('Call ended');
-                                setIsConnected(false);
-                                setIsSpeaking(false);
-                            }});
-                            
-                            vapiInstance.on('speech-start', () => {{
-                                console.log('Assistant started speaking');
-                                setIsSpeaking(true);
-                            }});
-                            
-                            vapiInstance.on('speech-end', () => {{
-                                console.log('Assistant stopped speaking');
-                                setIsSpeaking(false);
-                            }});
-                            
-                            vapiInstance.on('message', (message) => {{
-                                console.log('Message:', message);
-                                if (message.type === 'transcript' && message.transcript) {{
-                                    const role = message.transcriptType || message.role || 'assistant';
-                                    setTranscript(prev => [...prev, {{
-                                        role: role === 'user' ? 'user' : 'assistant',
-                                        text: message.transcript
-                                    }}]);
-                                }}
-                            }});
-                            
-                            vapiInstance.on('error', (error) => {{
-                                console.error('Vapi error:', error);
-                                setError(error.message || 'An error occurred');
-                            }});
-                            
-                            setVapi(vapiInstance);
-                            setIsLoading(false);
-                            console.log('Vapi initialized successfully');
-                            
-                        }} catch (err) {{
-                            console.error('Failed to load Vapi SDK:', err);
-                            setError('Failed to initialize voice system: ' + err.message);
-                            setIsLoading(false);
-                        }}
-                    }};
-                    
-                    loadVapiSDK();
-                    
-                    return () => {{
-                        if (vapi) {{
-                            vapi.stop();
-                        }}
-                    }};
-                }}, []);
-                
-                const startCall = async () => {{
-                    if (vapi) {{
-                        try {{
-                            console.log('Starting call with assistant:', assistantId);
-                            await vapi.start({{ assistantId }});
-                        }} catch (err) {{
-                            console.error('Error starting call:', err);
-                            setError('Failed to start call: ' + err.message);
-                        }}
-                    }}
-                }};
-                
-                const endCall = () => {{
-                    if (vapi) {{
-                        vapi.stop();
-                    }}
-                }};
-                
-                if (isLoading) {{
-                    return (
-                        <div className="widget-container">
-                            <div className="loading-state">
-                                ⏳ Loading voice assistant...
-                            </div>
-                        </div>
-                    );
+            <div class="info-box">
+                <h3>📌 Quick Guide</h3>
+                <p>• Click the button above to start a voice call</p>
+                <p>• Allow microphone access when prompted</p>
+                <p>• Speak naturally with the assistant</p>
+                <p>• The assistant will respond via voice</p>
+                <p>• Click the button again to end the call</p>
+            </div>
+        </div>
+
+        <script>
+            // Configuration
+            const ASSISTANT_ID = '{assistant_id}';
+            const PUBLIC_KEY = '{public_key}';
+            let vapiInstance = null;
+            let isCallActive = false;
+            
+            // Function to update status
+            function updateStatus(message, type = 'loading') {{
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = 'status-message status-' + type;
+            }}
+            
+            // Function to start/stop Vapi call
+            window.startVapiCall = function() {{
+                if (!vapiInstance) {{
+                    updateStatus('❌ Voice system not initialized', 'error');
+                    return;
                 }}
                 
-                if (error) {{
-                    return (
-                        <div className="widget-container">
-                            <div className="error-state">
-                                ❌ {{error}}
-                            </div>
-                        </div>
-                    );
-                }}
+                const button = document.getElementById('start-button');
                 
-                return (
-                    <div className="widget-container">
-                        {{!isConnected ? (
-                            <button 
-                                className="start-button"
-                                onClick={{startCall}}
-                            >
-                                <span style={{{{ fontSize: '24px' }}}}>🎤</span>
-                                <span>Talk to Assistant</span>
-                            </button>
-                        ) : (
-                            <div className="call-interface">
-                                <div className="status-bar">
-                                    <div className="status-indicator">
-                                        <div className={{"status-dot " + (isSpeaking ? "speaking" : "")}}></div>
-                                        <span style={{{{ fontWeight: 'bold', color: '#333' }}}}>
-                                            {{isSpeaking ? 'Assistant Speaking...' : 'Listening...'}}
-                                        </span>
-                                    </div>
-                                    <button className="end-button" onClick={{endCall}}>
-                                        End Call
-                                    </button>
-                                </div>
-                                
-                                <div className="transcript-area">
-                                    {{transcript.length === 0 ? (
-                                        <div className="empty-transcript">
-                                            Conversation will appear here...
-                                        </div>
-                                    ) : (
-                                        transcript.map((msg, i) => (
-                                            <div 
-                                                key={{i}}
-                                                className={{"transcript-message " + (msg.role === 'user' ? 'user-message' : 'assistant-message')}}
-                                            >
-                                                {{msg.text}}
-                                            </div>
-                                        ))
-                                    )}}
-                                </div>
-                            </div>
-                        )}}
-                    </div>
-                );
+                if (!isCallActive) {{
+                    // Start call
+                    console.log('Starting call...');
+                    vapiInstance.start({{
+                        assistantId: ASSISTANT_ID,
+                        model: {{
+                            provider: "openai",
+                            model: "gpt-4o",
+                            temperature: 0.7
+                        }},
+                        voice: {{
+                            provider: "11labs",
+                            voiceId: "21m00Tcm4TlvDq8ikWAM"
+                        }}
+                    }});
+                    
+                    button.textContent = '🔴 End Call';
+                    button.style.background = '#dc2626';
+                    isCallActive = true;
+                    updateStatus('📞 Call in progress...', 'ready');
+                }} else {{
+                    // End call
+                    console.log('Ending call...');
+                    vapiInstance.stop();
+                    
+                    button.textContent = '🎤 Talk to Assistant';
+                    button.style.background = '#12A594';
+                    isCallActive = false;
+                    updateStatus('✅ Ready to start a new call', 'ready');
+                }}
             }};
             
-            // Render the app
-            const root = ReactDOM.createRoot(document.getElementById('root'));
-            root.render(<VapiWidget />);
+            // Load Vapi SDK
+            (function(d, t) {{
+                console.log('Loading Vapi SDK...');
+                var g = d.createElement(t);
+                var s = d.getElementsByTagName(t)[0];
+                
+                g.src = 'https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js';
+                g.defer = true;
+                g.async = true;
+                
+                g.onload = function() {{
+                    console.log('Vapi SDK loaded successfully');
+                    
+                    // Wait a moment for the SDK to initialize
+                    setTimeout(function() {{
+                        try {{
+                            if (typeof window.vapiSDK !== 'undefined') {{
+                                console.log('Initializing Vapi with public key:', PUBLIC_KEY.substring(0, 10) + '...');
+                                
+                                // Initialize Vapi
+                                vapiInstance = new window.vapiSDK.Vapi(PUBLIC_KEY);
+                                
+                                // Set up event listeners
+                                vapiInstance.on('call-start', function() {{
+                                    console.log('Call started successfully');
+                                }});
+                                
+                                vapiInstance.on('call-end', function() {{
+                                    console.log('Call ended');
+                                    document.getElementById('start-button').textContent = '🎤 Talk to Assistant';
+                                    document.getElementById('start-button').style.background = '#12A594';
+                                    isCallActive = false;
+                                    updateStatus('✅ Call ended. Ready for new call', 'ready');
+                                }});
+                                
+                                vapiInstance.on('error', function(error) {{
+                                    console.error('Vapi error:', error);
+                                    updateStatus('❌ Error: ' + error.message, 'error');
+                                }});
+                                
+                                updateStatus('✅ Voice assistant ready!', 'ready');
+                                document.getElementById('button-container').style.display = 'block';
+                                
+                            }} else {{
+                                throw new Error('Vapi SDK not found in window object');
+                            }}
+                        }} catch (error) {{
+                            console.error('Failed to initialize Vapi:', error);
+                            updateStatus('❌ Failed to initialize: ' + error.message, 'error');
+                        }}
+                    }}, 1000);
+                }};
+                
+                g.onerror = function() {{
+                    console.error('Failed to load Vapi SDK');
+                    updateStatus('❌ Failed to load voice system', 'error');
+                }};
+                
+                s.parentNode.insertBefore(g, s);
+            }})(document, 'script');
+            
+            // Debug info
+            console.log('Assistant ID:', ASSISTANT_ID);
+            console.log('Public Key provided:', PUBLIC_KEY ? 'Yes' : 'No');
         </script>
     </body>
     </html>
     """
     
-    # Embed using components.html with increased height for better visibility
+    # Embed using components.html
     components.html(
         html_content,
         height=450,
