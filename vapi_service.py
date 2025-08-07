@@ -4,7 +4,8 @@ import os
 import time
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from vapi_python import Vapi
+from vapi_server_sdk import Vapi
+
 
 app = FastAPI()
 
