@@ -507,10 +507,6 @@ import base64
 import webbrowser
 from pathlib import Path
 import tempfile
-import threading
-import http.server
-import socketserver
-from urllib.parse import quote
 
 load_dotenv()
 
@@ -521,8 +517,8 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-def create_test_page(assistant_id, public_key, persona_name="Generated Persona"):
-    """Crea una pagina HTML di test per VAPI"""
+def create_vapi_test_html(assistant_id, public_key, persona_name="Generated Persona"):
+    """Crea una pagina HTML completa per VAPI che verrà servita da Streamlit"""
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -643,6 +639,12 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
             border: 1px solid #bee5eb;
         }}
         
+        .error {{
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }}
+        
         .footer {{
             margin-top: 40px;
             padding-top: 30px;
@@ -654,6 +656,17 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
         .brand {{
             font-weight: 600;
             color: #667eea;
+        }}
+        
+        .debug-info {{
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+            font-family: monospace;
+            font-size: 0.85rem;
         }}
     </style>
 </head>
@@ -685,6 +698,14 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
             </ul>
         </div>
         
+        <div class="debug-info">
+            <strong>🔧 Technical Info:</strong><br>
+            Assistant ID: {assistant_id}<br>
+            Public Key: {public_key[:12]}...<br>
+            Page served via: Streamlit Static Files<br>
+            Status: <span id="debug-status">Initializing...</span>
+        </div>
+        
         <div class="footer">
             <div class="brand">CTC Health Solution</div>
             <div>Advanced Voice AI • Medical Training Platform</div>
@@ -696,117 +717,201 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
     <script>
         // Configuration
         var vapiInstance = null;
-        const assistant = "{assistant_id}"; // Substitute with your assistant ID
-        const apiKey = "{public_key}"; // Substitute with your Public key from Vapi Dashboard.
-        const buttonConfig = {{
-            position: "bottom-right",
-            offset: "40px",
-            width: "60px",
-            height: "60px",
-            idle: {{
-                color: "#667eea",
-                type: "pill",
-                title: "🎙️ Talk to {persona_name}",
-                subtitle: "CTC Health Assistant",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`
-            }},
-            loading: {{
-                color: "#ed8936",
-                title: "Connecting...",
-                subtitle: "Please wait"
-            }},
-            active: {{
-                color: "#e53e3e",
-                title: "🔴 Live Call",
-                subtitle: "Tap to end call"
-            }}
-        }}; // Modify this as required
+        const assistant = "{assistant_id}"; // Your assistant ID
+        const apiKey = "{public_key}"; // Your Public API key
         
         const statusEl = document.getElementById('status');
+        const debugStatusEl = document.getElementById('debug-status');
         
         function updateStatus(message, className) {{
             statusEl.innerHTML = message;
             statusEl.className = `status ${{className}}`;
         }}
         
-        // VAPI Snippet (directly from documentation)
-        (function (d, t) {{
-            var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
-            g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-            g.defer = true;
-            g.async = true;
-            s.parentNode.insertBefore(g, s);
-            g.onload = function () {{
-                try {{
-                    vapiInstance = window.vapiSDK.run({{
-                        apiKey: apiKey, // mandatory
-                        assistant: assistant, // mandatory
-                        config: buttonConfig, // optional
-                    }});
-                    
-                    if (vapiInstance) {{
-                        updateStatus('✅ Voice assistant ready! Look for the button in bottom-right corner.', 'ready');
-                        console.log('✅ VAPI initialized successfully');
-                        
-                        // Optional event listeners
-                        vapiInstance.on && vapiInstance.on('call-start', () => {{
-                            console.log('📞 Call started with {persona_name}');
-                        }});
-                        
-                        vapiInstance.on && vapiInstance.on('call-end', () => {{
-                            console.log('📞 Call ended');
-                            updateStatus('✅ Voice assistant ready! Click the button to start a new conversation.', 'ready');
-                        }});
-                        
-                        vapiInstance.on && vapiInstance.on('error', (error) => {{
-                            console.error('❌ VAPI Error:', error);
-                            updateStatus('❌ Error occurred. Please refresh the page to try again.', 'loading');
-                        }});
-                        
-                    }} else {{
-                        throw new Error('Failed to initialize VAPI instance');
-                    }}
-                    
-                }} catch (error) {{
-                    console.error('❌ VAPI Initialization Error:', error);
-                    updateStatus('❌ Failed to initialize. Please check your connection and refresh.', 'loading');
-                }}
-            }};
-            
-            g.onerror = function() {{
-                console.error('❌ Failed to load VAPI SDK');
-                updateStatus('❌ Failed to load voice system. Please refresh the page.', 'loading');
-            }};
-            
-        }})(document, "script");
+        function updateDebugStatus(message) {{
+            if (debugStatusEl) debugStatusEl.textContent = message;
+        }}
         
-        // Log initialization
+        // Enhanced debug logging
         console.log('🏥 CTC Health Assistant Test Page');
         console.log('👨‍⚕️ Persona: {persona_name}');
         console.log('🆔 Assistant ID:', assistant);
         console.log('🔑 Public Key:', apiKey.substring(0, 8) + '...');
+        console.log('🌍 Page URL:', window.location.href);
+        console.log('📡 User Agent:', navigator.userAgent);
+        
+        // Validation checks
+        if (!assistant || assistant === 'undefined' || assistant.includes('{{')) {{
+            updateStatus('❌ Invalid Assistant ID configuration', 'error');
+            updateDebugStatus('Invalid Assistant ID');
+            console.error('❌ Invalid Assistant ID:', assistant);
+        }} else if (!apiKey || apiKey === 'undefined' || apiKey.includes('{{')) {{
+            updateStatus('❌ Invalid API Key configuration', 'error');
+            updateDebugStatus('Invalid API Key');
+            console.error('❌ Invalid API Key:', apiKey);
+        }} else {{
+            // Proceed with VAPI loading
+            updateStatus('🔄 Loading VAPI SDK...', 'loading');
+            updateDebugStatus('Loading SDK...');
+            
+            // VAPI Snippet (Official Documentation)
+            (function (d, t) {{
+                var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
+                g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+                g.defer = true;
+                g.async = true;
+                s.parentNode.insertBefore(g, s);
+                
+                g.onload = function () {{
+                    console.log('✅ VAPI SDK loaded successfully');
+                    updateStatus('🚀 Initializing voice assistant...', 'loading');
+                    updateDebugStatus('SDK loaded, initializing...');
+                    
+                    // Wait for SDK to be ready
+                    setTimeout(() => {{
+                        try {{
+                            if (!window.vapiSDK) {{
+                                throw new Error('VAPI SDK not available in window');
+                            }}
+                            
+                            console.log('🔧 Creating VAPI instance...');
+                            
+                            vapiInstance = window.vapiSDK.run({{
+                                apiKey: apiKey, // mandatory
+                                assistant: assistant, // mandatory
+                                config: {{
+                                    position: "bottom-right",
+                                    offset: "40px",
+                                    width: "60px",
+                                    height: "60px",
+                                    idle: {{
+                                        color: "#667eea",
+                                        type: "pill",
+                                        title: "🎙️ Talk to {persona_name}",
+                                        subtitle: "CTC Health Assistant"
+                                    }},
+                                    loading: {{
+                                        color: "#ed8936",
+                                        title: "Connecting...",
+                                        subtitle: "Please wait"
+                                    }},
+                                    active: {{
+                                        color: "#e53e3e",
+                                        title: "🔴 Live Call",
+                                        subtitle: "Tap to end"
+                                    }}
+                                }}
+                            }});
+                            
+                            if (vapiInstance) {{
+                                console.log('✅ VAPI instance created successfully:', vapiInstance);
+                                updateStatus('✅ Voice assistant ready! Look for the button in bottom-right corner.', 'ready');
+                                updateDebugStatus('Ready and functional');
+                                
+                                // Event listeners
+                                if (vapiInstance.on) {{
+                                    vapiInstance.on('call-start', () => {{
+                                        console.log('📞 Call started with {persona_name}');
+                                        updateStatus('🔴 Call in progress with {persona_name}', 'ready');
+                                        updateDebugStatus('Call active');
+                                    }});
+                                    
+                                    vapiInstance.on('call-end', () => {{
+                                        console.log('📞 Call ended');
+                                        updateStatus('✅ Voice assistant ready! Click the button to start a new conversation.', 'ready');
+                                        updateDebugStatus('Call ended - ready for new call');
+                                    }});
+                                    
+                                    vapiInstance.on('error', (error) => {{
+                                        console.error('❌ VAPI Runtime Error:', error);
+                                        updateStatus('❌ Call error: ' + (error.message || 'Unknown error'), 'error');
+                                        updateDebugStatus('Error: ' + (error.message || 'Unknown'));
+                                    }});
+                                    
+                                    vapiInstance.on('speech-start', () => {{
+                                        console.log('🎤 User started speaking');
+                                    }});
+                                    
+                                    vapiInstance.on('speech-end', () => {{
+                                        console.log('🎤 User stopped speaking');
+                                    }});
+                                    
+                                    vapiInstance.on('message', (message) => {{
+                                        console.log('📨 VAPI Message:', message);
+                                    }});
+                                }}
+                                
+                            }} else {{
+                                throw new Error('VAPI instance creation returned null/undefined');
+                            }}
+                            
+                        }} catch (error) {{
+                            console.error('❌ VAPI Initialization Error:', error);
+                            updateStatus('❌ Failed to initialize: ' + error.message, 'error');
+                            updateDebugStatus('Initialization failed');
+                        }}
+                    }}, 1500); // Wait 1.5 seconds for SDK to be fully ready
+                }};
+                
+                g.onerror = function(error) {{
+                    console.error('❌ Failed to load VAPI SDK:', error);
+                    updateStatus('❌ Failed to load voice system. Please check your internet connection.', 'error');
+                    updateDebugStatus('SDK loading failed');
+                }};
+                
+                // Timeout fallback
+                setTimeout(() => {{
+                    if (!window.vapiSDK) {{
+                        console.error('⏱️ VAPI SDK loading timeout');
+                        updateStatus('❌ Loading timeout. Please refresh the page and try again.', 'error');
+                        updateDebugStatus('Timeout - please refresh');
+                    }}
+                }}, 15000); // 15 second timeout
+                
+            }})(document, "script");
+        }}
     </script>
 </body>
 </html>"""
     
     return html_content
 
-def create_and_open_test_page(assistant_id, public_key, persona_name):
-    """Crea una pagina di test e la apre tramite data URL"""
+def save_vapi_html_to_static(assistant_id, public_key, persona_name):
+    """Salva la pagina HTML nella cartella static per essere servita da Streamlit"""
     
     try:
-        # Genera il contenuto HTML
-        html_content = create_test_page(assistant_id, public_key, persona_name)
+        # Crea la directory static se non esiste
+        static_dir = Path("./static")
+        static_dir.mkdir(exist_ok=True)
         
-        # Codifica in base64 per data URL
-        encoded = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
-        data_url = f"data:text/html;base64,{encoded}"
+        # Genera nome file unico
+        timestamp = int(time.time())
+        filename = f"ctc_health_test_{timestamp}.html"
+        filepath = static_dir / filename
         
-        return data_url
+        # Genera contenuto HTML
+        html_content = create_vapi_test_html(assistant_id, public_key, persona_name)
+        
+        # Salva il file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return filename
         
     except Exception as e:
-        st.error(f"Errore nella creazione della pagina di test: {str(e)}")
+        st.error(f"Errore nel salvataggio della pagina di test: {str(e)}")
         return None
+
+def get_static_file_url(filename):
+    """Restituisce l'URL per accedere al file static"""
+    # Per Streamlit locale: http://localhost:8501/app/static/filename
+    # Per Streamlit Cloud: https://your-app.streamlit.app/app/static/filename
+    
+    # Prova a determinare l'URL base
+    base_url = "http://localhost:8501"  # Default per sviluppo locale
+    
+    # Se in produzione, l'URL sarà diverso ma il path relativo rimane lo stesso
+    return f"{base_url}/app/static/{filename}"
 
 st.title("🏥 CTC Health Solution - Medical Training Platform")
 st.markdown("""
@@ -815,6 +920,26 @@ multi-agent AI system to help you create detailed medical professional personas 
 
 Follow the steps below to build your persona, then test it with our interactive voice assistant.
 """)
+
+# Verifica se static file serving è abilitato
+st.sidebar.markdown("## ⚙️ Configuration Check")
+if os.getenv("STREAMLIT_SERVER_ENABLE_STATIC_SERVING") == "true":
+    st.sidebar.success("✅ Static file serving enabled")
+else:
+    st.sidebar.warning("""
+    ⚠️ **Static file serving not enabled**
+    
+    Add to your config.toml:
+    ```toml
+    [server]
+    enableStaticServing = true
+    ```
+    
+    Or set environment variable:
+    ```bash
+    STREAMLIT_SERVER_ENABLE_STATIC_SERVING=true
+    ```
+    """)
 
 # --- Main UI ---
 st.header("Step 1: Persona Header")
@@ -1049,42 +1174,47 @@ if st.session_state.final_prompt:
                 
                 # Test button
                 if st.button("🎙️ Test Your CTC Health Assistant", type="primary", use_container_width=True):
-                    with st.spinner("🔄 Preparing test interface..."):
-                        # Crea la pagina di test tramite data URL
-                        data_url = create_and_open_test_page(
+                    with st.spinner("🔄 Creating test interface..."):
+                        # Salva la pagina HTML nella cartella static
+                        filename = save_vapi_html_to_static(
                             assistant_id=st.session_state.assistant_id,
                             public_key=vapi_public_key,
                             persona_name=st.session_state.persona_name
                         )
                         
-                        if data_url:
-                            st.success("✅ Test interface ready!")
+                        if filename:
+                            st.success("✅ Test page created successfully!")
                             
-                            # Mostra in un nuovo tab usando JavaScript
-                            js_code = f"""
-                            <script>
-                            window.open('{data_url}', '_blank');
-                            </script>
-                            """
+                            # URL per accedere al file
+                            static_url = f"/app/static/{filename}"
                             
-                            # Inject JavaScript per aprire in nuovo tab
-                            components.html(js_code, height=0)
+                            st.info(f"""
+                            **🎯 Your test page is ready!**
                             
-                            st.info("📋 The test page should open in a new browser tab. If pop-ups are blocked, click the button below:")
+                            The HTML file has been saved to: `./static/{filename}`
                             
-                            # Fallback: mostra link cliccabile
-                            st.markdown(f"""
-                            <a href="{data_url}" target="_blank" style="
-                                display: inline-block;
-                                background: #667eea;
-                                color: white;
-                                padding: 12px 24px;
-                                text-decoration: none;
-                                border-radius: 8px;
-                                font-weight: 600;
-                                margin: 10px 0;
-                            ">🚀 Open Test Page</a>
-                            """, unsafe_allow_html=True)
+                            **Access URL:** `{static_url}`
+                            """)
+                            
+                            # Mostra l'iframe con la pagina HTML servita da Streamlit
+                            st.markdown("### 🎙️ Voice Assistant Interface")
+                            
+                            # Usa components.iframe per caricare la pagina HTML
+                            components.iframe(static_url, height=700, scrolling=True)
+                            
+                            st.markdown("""
+                            **📋 Instructions:**
+                            
+                            1. **Wait for initialization** - The voice system will load automatically
+                            2. **Look for the voice button** in the bottom-right corner of the frame above
+                            3. **Click to start talking** - Have a conversation with your assistant
+                            4. **Allow microphone access** when your browser asks
+                            
+                            **🔧 Troubleshooting:**
+                            - If you don't see the button, wait a few seconds for VAPI to load
+                            - Check the debug information in the interface for any issues
+                            - Make sure your browser allows microphone access
+                            """)
                             
                         else:
-                            st.error("❌ Failed to create test interface")
+                            st.error("❌ Failed to create test page")
