@@ -9,11 +9,7 @@
 # python-multipart
 
 
-fastapi
-uvicorn[standard]
-vapi_python
-python-multipart
-pyaudio
+
 fastapi
 uvicorn[standard]
 vapi_python
