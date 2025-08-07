@@ -516,9 +516,9 @@ def get_segment_options():
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
 def create_vapi_react_widget(assistant_id, public_key):
-    """Creates an embedded Vapi widget using native TypeScript/React with ES6 modules"""
+    """Creates an embedded Vapi widget using React with JSX for better compatibility"""
     
-    # Pure TypeScript/React implementation with proper imports
+    # React implementation with JSX and Babel transpilation
     html_content = f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -526,6 +526,11 @@ def create_vapi_react_widget(assistant_id, public_key):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Vapi Voice Assistant</title>
+        
+        <!-- React, ReactDOM and Babel -->
+        <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+        <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
         
         <style>
             * {{
@@ -536,11 +541,11 @@ def create_vapi_react_widget(assistant_id, public_key):
             
             body {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
-                background: #f5f5f5;
+                background: #f9f9f9;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                min-height: 600px;
+                min-height: 400px;
                 padding: 20px;
             }}
             
@@ -554,43 +559,149 @@ def create_vapi_react_widget(assistant_id, public_key):
                 width: 100%;
                 max-width: 500px;
                 margin: 0 auto;
+                text-align: center;
             }}
             
-            .loading {{
-                text-align: center;
-                padding: 40px;
+            .start-button {{
+                background: #12A594;
+                color: #fff;
+                border: none;
+                border-radius: 50px;
+                padding: 16px 32px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(18, 165, 148, 0.3);
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            
+            .start-button:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(18, 165, 148, 0.4);
+            }}
+            
+            .start-button:active {{
+                transform: translateY(0);
+            }}
+            
+            .call-interface {{
                 background: #fff;
                 border-radius: 12px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                padding: 24px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+                border: 1px solid #e1e5e9;
             }}
             
-            .error {{
+            .status-bar {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 20px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid #e5e7eb;
+            }}
+            
+            .status-indicator {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }}
+            
+            .status-dot {{
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #12A594;
+            }}
+            
+            .status-dot.speaking {{
+                background: #ff4444;
+                animation: pulse 1s infinite;
+            }}
+            
+            .end-button {{
+                background: #ff4444;
+                color: #fff;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 16px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+            }}
+            
+            .end-button:hover {{
+                background: #dc2626;
+            }}
+            
+            .transcript-area {{
+                max-height: 250px;
+                overflow-y: auto;
+                padding: 16px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                text-align: left;
+            }}
+            
+            .transcript-message {{
+                margin-bottom: 12px;
+                padding: 10px 14px;
+                border-radius: 12px;
+                max-width: 80%;
+                word-wrap: break-word;
+                font-size: 14px;
+                line-height: 1.4;
+            }}
+            
+            .user-message {{
+                background: #12A594;
+                color: white;
+                margin-left: auto;
+                text-align: right;
+            }}
+            
+            .assistant-message {{
+                background: #333;
+                color: white;
+                margin-right: auto;
+            }}
+            
+            .empty-transcript {{
                 text-align: center;
+                color: #999;
+                font-style: italic;
                 padding: 40px;
+            }}
+            
+            .loading-state {{
+                padding: 60px;
+                text-align: center;
+                color: #666;
+            }}
+            
+            .error-state {{
+                padding: 40px;
+                text-align: center;
+                color: #dc2626;
                 background: #fee;
                 border-radius: 12px;
-                color: #c00;
             }}
         </style>
     </head>
     <body>
         <div id="root"></div>
         
-        <script type="module">
-            // Import React, ReactDOM and Vapi from CDN as ES6 modules
-            import React, {{ useState, useEffect }} from 'https://esm.sh/react@18';
-            import ReactDOM from 'https://esm.sh/react-dom@18/client';
-            import Vapi from 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.2.0/+esm';
+        <script type="text/babel">
+            const {{ useState, useEffect, useRef }} = React;
             
-            // Define interfaces (TypeScript types as comments for clarity)
-            // interface VapiWidgetProps {{
-            //   apiKey: string;
-            //   assistantId: string;
-            //   config?: Record<string, unknown>;
-            // }}
+            // Vapi SDK will be loaded dynamically
+            let VapiSDK = null;
             
-            // VapiWidget Component - Pure React/TypeScript implementation
-            const VapiWidget = ({{ apiKey, assistantId, config = {{}} }}) => {{
+            const VapiWidget = () => {{
                 const [vapi, setVapi] = useState(null);
                 const [isConnected, setIsConnected] = useState(false);
                 const [isSpeaking, setIsSpeaking] = useState(false);
@@ -598,58 +709,97 @@ def create_vapi_react_widget(assistant_id, public_key):
                 const [isLoading, setIsLoading] = useState(true);
                 const [error, setError] = useState(null);
                 
-                useEffect(() => {{
-                    // Initialize Vapi instance
-                    const vapiInstance = new Vapi(apiKey);
-                    setVapi(vapiInstance);
-                    
-                    // Event listeners
-                    vapiInstance.on('call-start', () => {{
-                        console.log('Call started');
-                        setIsConnected(true);
-                    }});
-                    
-                    vapiInstance.on('call-end', () => {{
-                        console.log('Call ended');
-                        setIsConnected(false);
-                        setIsSpeaking(false);
-                    }});
-                    
-                    vapiInstance.on('speech-start', () => {{
-                        console.log('Assistant started speaking');
-                        setIsSpeaking(true);
-                    }});
-                    
-                    vapiInstance.on('speech-end', () => {{
-                        console.log('Assistant stopped speaking');
-                        setIsSpeaking(false);
-                    }});
-                    
-                    vapiInstance.on('message', (message) => {{
-                        if (message.type === 'transcript') {{
-                            setTranscript(prev => [...prev, {{
-                                role: message.role || message.transcriptType,
-                                text: message.transcript
-                            }}]);
-                        }}
-                    }});
-                    
-                    vapiInstance.on('error', (error) => {{
-                        console.error('Vapi error:', error);
-                        setError(error.message || 'An error occurred');
-                    }});
-                    
-                    setIsLoading(false);
-                    
-                    // Cleanup function
-                    return () => {{
-                        vapiInstance?.stop();
-                    }};
-                }}, [apiKey]);
+                const apiKey = '{public_key}';
+                const assistantId = '{assistant_id}';
                 
-                const startCall = () => {{
+                useEffect(() => {{
+                    // Load Vapi SDK dynamically
+                    const loadVapiSDK = async () => {{
+                        try {{
+                            const script = document.createElement('script');
+                            script.type = 'module';
+                            script.innerHTML = `
+                                import Vapi from 'https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.2.0/+esm';
+                                window.VapiSDK = Vapi;
+                                window.dispatchEvent(new Event('vapi-sdk-loaded'));
+                            `;
+                            document.head.appendChild(script);
+                            
+                            await new Promise((resolve) => {{
+                                window.addEventListener('vapi-sdk-loaded', resolve, {{ once: true }});
+                            }});
+                            
+                            VapiSDK = window.VapiSDK;
+                            const vapiInstance = new VapiSDK(apiKey);
+                            
+                            // Set up event listeners
+                            vapiInstance.on('call-start', () => {{
+                                console.log('Call started');
+                                setIsConnected(true);
+                                setTranscript([]);
+                            }});
+                            
+                            vapiInstance.on('call-end', () => {{
+                                console.log('Call ended');
+                                setIsConnected(false);
+                                setIsSpeaking(false);
+                            }});
+                            
+                            vapiInstance.on('speech-start', () => {{
+                                console.log('Assistant started speaking');
+                                setIsSpeaking(true);
+                            }});
+                            
+                            vapiInstance.on('speech-end', () => {{
+                                console.log('Assistant stopped speaking');
+                                setIsSpeaking(false);
+                            }});
+                            
+                            vapiInstance.on('message', (message) => {{
+                                console.log('Message:', message);
+                                if (message.type === 'transcript' && message.transcript) {{
+                                    const role = message.transcriptType || message.role || 'assistant';
+                                    setTranscript(prev => [...prev, {{
+                                        role: role === 'user' ? 'user' : 'assistant',
+                                        text: message.transcript
+                                    }}]);
+                                }}
+                            }});
+                            
+                            vapiInstance.on('error', (error) => {{
+                                console.error('Vapi error:', error);
+                                setError(error.message || 'An error occurred');
+                            }});
+                            
+                            setVapi(vapiInstance);
+                            setIsLoading(false);
+                            console.log('Vapi initialized successfully');
+                            
+                        }} catch (err) {{
+                            console.error('Failed to load Vapi SDK:', err);
+                            setError('Failed to initialize voice system: ' + err.message);
+                            setIsLoading(false);
+                        }}
+                    }};
+                    
+                    loadVapiSDK();
+                    
+                    return () => {{
+                        if (vapi) {{
+                            vapi.stop();
+                        }}
+                    }};
+                }}, []);
+                
+                const startCall = async () => {{
                     if (vapi) {{
-                        vapi.start({{ assistantId }});
+                        try {{
+                            console.log('Starting call with assistant:', assistantId);
+                            await vapi.start({{ assistantId }});
+                        }} catch (err) {{
+                            console.error('Error starting call:', err);
+                            setError('Failed to start call: ' + err.message);
+                        }}
                     }}
                 }};
                 
@@ -659,170 +809,84 @@ def create_vapi_react_widget(assistant_id, public_key):
                     }}
                 }};
                 
-                // Loading state
                 if (isLoading) {{
-                    return React.createElement('div', {{ className: 'loading' }},
-                        React.createElement('p', null, 'Loading voice assistant...')
+                    return (
+                        <div className="widget-container">
+                            <div className="loading-state">
+                                ⏳ Loading voice assistant...
+                            </div>
+                        </div>
                     );
                 }}
                 
-                // Error state
                 if (error) {{
-                    return React.createElement('div', {{ className: 'error' }},
-                        React.createElement('p', null, 'Error: ' + error)
+                    return (
+                        <div className="widget-container">
+                            <div className="error-state">
+                                ❌ {{error}}
+                            </div>
+                        </div>
                     );
                 }}
                 
-                // Main render
-                return React.createElement('div', {{ className: 'widget-container' }},
-                    !isConnected ? (
-                        // Not connected state - Show start button
-                        React.createElement('div', {{ style: {{ textAlign: 'center', padding: '20px' }} }},
-                            React.createElement('button', {{
-                                onClick: startCall,
-                                style: {{
-                                    background: '#12A594',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: '50px',
-                                    padding: '16px 24px',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(18, 165, 148, 0.3)',
-                                    transition: 'all 0.3s ease',
-                                }},
-                                onMouseOver: (e) => {{
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(18, 165, 148, 0.4)';
-                                }},
-                                onMouseOut: (e) => {{
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(18, 165, 148, 0.3)';
-                                }}
-                            }}, '🎤 Talk to Assistant')
-                        )
-                    ) : (
-                        // Connected state - Show call interface
-                        React.createElement('div', {{
-                            style: {{
-                                background: '#fff',
-                                borderRadius: '12px',
-                                padding: '20px',
-                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-                                border: '1px solid #e1e5e9'
-                            }}
-                        }},
-                            // Status bar
-                            React.createElement('div', {{
-                                style: {{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '16px'
-                                }}
-                            }},
-                                React.createElement('div', {{
-                                    style: {{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '8px'
-                                    }}
-                                }},
-                                    React.createElement('div', {{
-                                        style: {{
-                                            width: '12px',
-                                            height: '12px',
-                                            borderRadius: '50%',
-                                            background: isSpeaking ? '#ff4444' : '#12A594',
-                                            animation: isSpeaking ? 'pulse 1s infinite' : 'none'
-                                        }}
-                                    }}),
-                                    React.createElement('span', {{
-                                        style: {{ fontWeight: 'bold', color: '#333' }}
-                                    }}, isSpeaking ? 'Assistant Speaking...' : 'Listening...')
-                                ),
-                                React.createElement('button', {{
-                                    onClick: endCall,
-                                    style: {{
-                                        background: '#ff4444',
-                                        color: '#fff',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '6px 12px',
-                                        fontSize: '12px',
-                                        cursor: 'pointer'
-                                    }}
-                                }}, 'End Call')
-                            ),
-                            // Transcript area
-                            React.createElement('div', {{
-                                style: {{
-                                    maxHeight: '200px',
-                                    overflowY: 'auto',
-                                    marginBottom: '12px',
-                                    padding: '8px',
-                                    background: '#f8f9fa',
-                                    borderRadius: '8px'
-                                }}
-                            }},
-                                transcript.length === 0 ? (
-                                    React.createElement('p', {{
-                                        style: {{ color: '#666', fontSize: '14px', margin: 0 }}
-                                    }}, 'Conversation will appear here...')
-                                ) : (
-                                    transcript.map((msg, i) =>
-                                        React.createElement('div', {{
-                                            key: i,
-                                            style: {{
-                                                marginBottom: '8px',
-                                                textAlign: msg.role === 'user' ? 'right' : 'left'
-                                            }}
-                                        }},
-                                            React.createElement('span', {{
-                                                style: {{
-                                                    background: msg.role === 'user' ? '#12A594' : '#333',
-                                                    color: '#fff',
-                                                    padding: '8px 12px',
-                                                    borderRadius: '12px',
-                                                    display: 'inline-block',
-                                                    fontSize: '14px',
-                                                    maxWidth: '80%'
-                                                }}
-                                            }}, msg.text)
-                                        )
-                                    )
-                                )
-                            )
-                        )
-                    )
+                return (
+                    <div className="widget-container">
+                        {{!isConnected ? (
+                            <button 
+                                className="start-button"
+                                onClick={{startCall}}
+                            >
+                                <span style={{{{ fontSize: '24px' }}}}>🎤</span>
+                                <span>Talk to Assistant</span>
+                            </button>
+                        ) : (
+                            <div className="call-interface">
+                                <div className="status-bar">
+                                    <div className="status-indicator">
+                                        <div className={{"status-dot " + (isSpeaking ? "speaking" : "")}}></div>
+                                        <span style={{{{ fontWeight: 'bold', color: '#333' }}}}>
+                                            {{isSpeaking ? 'Assistant Speaking...' : 'Listening...'}}
+                                        </span>
+                                    </div>
+                                    <button className="end-button" onClick={{endCall}}>
+                                        End Call
+                                    </button>
+                                </div>
+                                
+                                <div className="transcript-area">
+                                    {{transcript.length === 0 ? (
+                                        <div className="empty-transcript">
+                                            Conversation will appear here...
+                                        </div>
+                                    ) : (
+                                        transcript.map((msg, i) => (
+                                            <div 
+                                                key={{i}}
+                                                className={{"transcript-message " + (msg.role === 'user' ? 'user-message' : 'assistant-message')}}
+                                            >
+                                                {{msg.text}}
+                                            </div>
+                                        ))
+                                    )}}
+                                </div>
+                            </div>
+                        )}}
+                    </div>
                 );
             }};
             
-            // Main App Component
-            const App = () => {{
-                const apiKey = '{public_key}';
-                const assistantId = '{assistant_id}';
-                
-                return React.createElement(VapiWidget, {{
-                    apiKey: apiKey,
-                    assistantId: assistantId
-                }});
-            }};
-            
-            // Create root and render
-            const container = document.getElementById('root');
-            const root = ReactDOM.createRoot(container);
-            root.render(React.createElement(App));
+            // Render the app
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<VapiWidget />);
         </script>
     </body>
     </html>
     """
     
-    # Embed using components.html
+    # Embed using components.html with increased height for better visibility
     components.html(
         html_content,
-        height=400,
+        height=450,
         scrolling=False
     )
 
