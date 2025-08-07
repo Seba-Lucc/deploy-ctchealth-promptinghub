@@ -496,7 +496,8 @@
 
 
 # app.py
-
+# Dashboard that create the system prompt and create the assistant, it can be enteracted trought an html file created by html_generator.py
+# This codbase is also set to connet API Keys directy from streamlit 
 import streamlit as st
 import autoprompt
 from langchain_openai import ChatOpenAI
@@ -504,13 +505,11 @@ import time
 import streamlit.components.v1 as components
 import os
 from dotenv import load_dotenv
+import base64
+import webbrowser
+from pathlib import Path
 
-# Load environment variables
 load_dotenv()
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-VAPI_PRIVATE_KEY = os.getenv("VAPI_PRIVATE_KEY")
-VAPI_PUBLIC_KEY = os.getenv("VAPI_PUBLIC_KEY")
 
 st.set_page_config(layout="wide", page_title="CTC Health Solution - Persona Prompt Generator")
 
@@ -519,24 +518,192 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-# --- Intro ---
+def create_vapi_embed_component(assistant_id, public_key, persona_name="Generated Persona"):
+    """Creates Vapi embedded component directly in Streamlit"""
+    
+    # Vapi embed HTML following their documentation
+    embed_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            body {{
+                margin: 0;
+                padding: 20px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                min-height: 400px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }}
+            .container {{
+                text-align: center;
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                max-width: 600px;
+                width: 100%;
+            }}
+            .title {{
+                color: #2E86AB;
+                font-size: 24px;
+                margin-bottom: 10px;
+                font-weight: 600;
+            }}
+            .subtitle {{
+                color: #718096;
+                font-size: 16px;
+                margin-bottom: 20px;
+            }}
+            .status {{
+                padding: 12px 20px;
+                background: #e8f5e8;
+                color: #2e7d32;
+                border-radius: 8px;
+                margin: 20px 0;
+                font-weight: 500;
+            }}
+            .info {{
+                background: #f7fafc;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 15px 0;
+                border-left: 4px solid #2E86AB;
+                text-align: left;
+            }}
+            .info-title {{
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+            }}
+            .assistant-id {{
+                font-family: monospace;
+                font-size: 12px;
+                color: #4a5568;
+                word-break: break-all;
+                background: #edf2f7;
+                padding: 8px;
+                border-radius: 4px;
+                margin-top: 5px;
+            }}
+            #vapi-button {{
+                position: fixed !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                z-index: 9999 !important;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="title">🎙️ CTC Health Assistant Test</div>
+            <div class="subtitle">Testing: {persona_name}</div>
+            
+            <div class="status" id="status">
+                🔄 Initializing voice assistant...
+            </div>
+            
+            <div class="info">
+                <div class="info-title">📋 Instructions:</div>
+                <ul style="margin: 10px 0; padding-left: 20px; color: #4a5568;">
+                    <li>Click the call button (bottom-right) to start</li>
+                    <li>Allow microphone access when prompted</li>
+                    <li>Speak naturally with the assistant</li>
+                    <li>Test various medical scenarios</li>
+                </ul>
+            </div>
+            
+            <div class="info">
+                <div class="info-title">Assistant ID:</div>
+                <div class="assistant-id">{assistant_id}</div>
+            </div>
+        </div>
+
+        <script>
+            (function(d, t) {{
+                var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+                g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+                g.defer = true;
+                g.async = true;
+                s.parentNode.insertBefore(g, s);
+                
+                g.onload = function() {{
+                    try {{
+                        window.vapiSDK.run({{
+                            apiKey: "{public_key}",
+                            assistant: "{assistant_id}",
+                            config: {{
+                                position: "bottom-right",
+                                offset: "20px",
+                                width: "60px",
+                                height: "60px",
+                                idle: {{
+                                    color: "#2E86AB",
+                                    type: "pill",
+                                    title: "Start Call",
+                                    subtitle: "Click to begin"
+                                }},
+                                loading: {{
+                                    color: "#f59e0b",
+                                    type: "pill",
+                                    title: "Connecting...",
+                                    subtitle: "Please wait"
+                                }},
+                                active: {{
+                                    color: "#ef4444",
+                                    type: "pill",
+                                    title: "Call Active",
+                                    subtitle: "Click to end"
+                                }}
+                            }}
+                        }});
+                        
+                        document.getElementById('status').innerHTML = '✅ Assistant ready! Click the button to start.';
+                        document.getElementById('status').style.background = '#e8f5e8';
+                        document.getElementById('status').style.color = '#2e7d32';
+                        
+                    }} catch(error) {{
+                        console.error('Vapi initialization error:', error);
+                        document.getElementById('status').innerHTML = '❌ Error: ' + error.message;
+                        document.getElementById('status').style.background = '#ffebee';
+                        document.getElementById('status').style.color = '#c62828';
+                    }}
+                }};
+                
+                g.onerror = function() {{
+                    document.getElementById('status').innerHTML = '❌ Failed to load voice system';
+                    document.getElementById('status').style.background = '#ffebee';
+                    document.getElementById('status').style.color = '#c62828';
+                }};
+            }})(document, "script");
+        </script>
+    </body>
+    </html>
+    """
+    
+    return embed_html
+
 st.title("🏥 CTC Health Solution - Medical Training Platform")
 st.markdown("""
-Welcome to the **CTC Health Solution** Persona Prompt Generator! This advanced platform uses a
+Welcome to the **CTC Health Solution** Persona Prompt Generator! This advanced platform uses a 
 multi-agent AI system to help you create detailed medical professional personas for training scenarios.
 
 Follow the steps below to build your persona, then test it with our interactive voice assistant.
 """)
 
-# --- Step 1: Persona Header ---
+# --- Main UI ---
 st.header("Step 1: Persona Header")
 header_input = st.text_area(
-    "Provide basic details for the medical professional persona (Name, Title, Age, Gender, Practice Setting, Geography).",
+    "Provide basic details for the medical professional persona: Name, Title, Age, Gender, Practice Setting, and Geography.",
     "Dr. Anya Sharma, Oncologist, 45, female, private practice, New York",
     help="You can provide partial info, and the AI will complete it."
 )
 
-# Step 2: Customer Segmentation
 st.header("Step 2: Customer Segmentation")
 segment_options = get_segment_options()
 segment_choice = st.radio(
@@ -545,17 +712,29 @@ segment_choice = st.radio(
     format_func=lambda x: x.split('\n')[0].replace('###','').strip()
 )
 
-# Step 3: Clinical Context
+if segment_choice:
+    with st.expander("View Selected Segment Description", expanded=True):
+        st.markdown(segment_choice)
+
 st.header("Step 3: Clinical Context")
+st.markdown("Provide details about the persona's clinical practice. Use the points below for guidance:")
+st.info("""
+**Key areas to describe:**
+- Therapeutic Area / Sub-specialty – e.g., "Hematology-Oncology and Multiple Myeloma".
+- Typical Patient Mix – percentage of newly diagnosed patients, lines of therapy, comorbidities.
+- Key Clinical Drivers – survival, progression-free, side-effect profile, dosing convenience.
+- Practice Metrics – infusion chair capacity, average pts/day, clinical trial participation.
+""")
+
 context_input = st.text_area(
     "Describe the persona's clinical context (Therapeutic Area, Patient Mix, etc.).",
     "Specializes in late-stage lung cancer. Sees a mix of newly diagnosed and treatment-experienced patients.",
     help="You can provide partial info, and the AI will help complete it."
 )
 
-# Step 4: Psychographics & Motivations
 st.header("Step 4: Psychographics & Motivations")
 st.markdown("Use the sliders to define the persona's psychographic profile (0.0 to 1.0).")
+
 
 # Risk Tolerance
 st.markdown("**Risk Tolerance**")
@@ -563,7 +742,7 @@ col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
 with col1:
     st.caption("Conservative")
 with col2:
-    risk_tolerance = st.slider("", 0.0, 1.0, 0.7, step=0.1, label_visibility="collapsed", format="%.1f")
+    risk_tolerance = st.slider("Risk Tolerance", 0.0, 1.0, 0.7, step=0.1, label_visibility="collapsed", format="%.1f")
 with col3:
     st.caption("Bold Experimenter")
 
@@ -573,7 +752,7 @@ col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
 with col1:
     st.caption("Low")
 with col2:
-    brand_loyalty = st.slider("", 0.0, 1.0, 0.3, step=0.1, label_visibility="collapsed", format="%.1f")
+    brand_loyalty = st.slider("Brand Loyalty", 0.0, 1.0, 0.3, step=0.1, label_visibility="collapsed", format="%.1f")
 with col3:
     st.caption("High")
 
@@ -583,7 +762,7 @@ col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
 with col1:
     st.caption("Anecdote-driven")
 with col2:
-    research_orientation = st.slider("", 0.0, 1.0, 0.8, step=0.1, label_visibility="collapsed", format="%.1f")
+    research_orientation = st.slider("Research Orientation", 0.0, 1.0, 0.8, step=0.1, label_visibility="collapsed", format="%.1f")
 with col3:
     st.caption("Data-heavy")
 
@@ -593,7 +772,7 @@ col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
 with col1:
     st.caption("Seeks podium")
 with col2:
-    recognition_need = st.slider("", 0.0, 1.0, 0.2, step=0.1, label_visibility="collapsed", format="%.1f")
+    recognition_need = st.slider("Recognition Need", 0.0, 1.0, 0.2, step=0.1, label_visibility="collapsed", format="%.1f")
 with col3:
     st.caption("Low-profile")
 
@@ -603,26 +782,29 @@ col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
 with col1:
     st.caption("Transactional")
 with col2:
-    patient_empathy = st.slider("", 0.0, 1.0, 0.9, step=0.1, label_visibility="collapsed", format="%.1f")
+    patient_empathy = st.slider("Patient Empathy", 0.0, 1.0, 0.9, step=0.1, label_visibility="collapsed", format="%.1f")
 with col3:
     st.caption("Advocate")
-
-# Step 5: Objectives
-st.header("Step 5: Objectives")
-st.markdown("""
-- **Training Objective(s):** e.g., "Probe for unmet needs, handle safety concerns"  
-- **Key Messages:** e.g., "<3 crisp value props"  
-- **Anticipated Objections:** e.g., "Too new, budget impact, no OS data yet"  
-- **Competitor Snapshot:** e.g., "Drug A: oral, cheaper; Drug B: same MoA"  
-- **Desired Rep Skill:** e.g., "Open-ended questioning, objection-reframe, close"  
+    
+st.header("Step 5: Product & Call Objectives")
+st.markdown("Describe the product, call objectives, and the context for the role-play.")
+st.info("""
+**Key areas to describe:**
+- **Product in Focus:** e.g., "Xaltrava 25 mg SC"
+- **Training Objective(s):** e.g., "Probe for unmet needs, handle safety concerns"
+- **Key Messages:** e.g., "<3 crisp value props>"
+- **Anticipated Objections:** e.g., "Too new, budget impact, no OS data yet"
+- **Competitor Snapshot:** e.g., "Drug A: oral, cheaper; Drug B: same MoA"
+- **Desired Rep Skill:** e.g., "Open-ended questioning, objection-reframe, close"
 """)
+
 objectives_input = st.text_area(
     "Describe the product and call objectives.",
     "The product is a new immunotherapy, Xaltorvima. The rep needs to handle objections about its novel mechanism of action.",
     help="You can provide partial info, and the AI will help complete it."
 )
 
-# Initialize session state
+# Initialize session state variables
 if 'persona_details' not in st.session_state:
     st.session_state.persona_details = None
 if 'final_prompt' not in st.session_state:
@@ -632,17 +814,19 @@ if 'assistant_id' not in st.session_state:
 if 'persona_name' not in st.session_state:
     st.session_state.persona_name = ""
 
-# Build Persona Details
+# Step 1: Build Persona Details
 if not st.session_state.persona_details:
     if st.button("📝 Build Persona Details", type="primary"):
+   
         psychographics_input_str = f"""
-- Risk Tolerance: {risk_tolerance} (0=Conservative, 1=Bold Experimenter)
-- Brand Loyalty: {brand_loyalty} (0=Low, 1=High)
-- Research Orientation: {research_orientation} (0=Anecdote-driven, 1=Data-heavy)
-- Recognition Need: {recognition_need} (0=Seeks podium, 1=Low-profile)
-- Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
-"""
-        with st.spinner("🤖 Building the persona... This may take a moment."):
+    - Risk Tolerance: {risk_tolerance} (0=Conservative, 1=Bold Experimenter)
+    - Brand Loyalty: {brand_loyalty} (0=Low, 1=High)
+    - Research Orientation: {research_orientation} (0=Anecdote-driven, 1=Data-heavy)
+    - Recognition Need: {recognition_need} (0=Seeks podium, 1=Low-profile)  
+    - Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
+    """
+
+        with st.spinner("🤖 CTC Health AI agents are building the persona... This may take a moment."):
             persona_state = autoprompt.build_persona_details(
                 header_input=header_input,
                 segment_input=segment_choice,
@@ -651,7 +835,8 @@ if not st.session_state.persona_details:
                 objectives_input=objectives_input
             )
             st.session_state.persona_details = persona_state
-
+            
+            # Extract persona name from header
             if persona_state and 'persona_header' in persona_state:
                 header_text = persona_state['persona_header']
                 if 'Dr.' in header_text:
@@ -659,66 +844,130 @@ if not st.session_state.persona_details:
                     st.session_state.persona_name = f"Dr. {name_part}"
                 else:
                     st.session_state.persona_name = "Generated Persona"
-        st.success("✅ Persona Details Built Successfully!")
+        
+        st.success("🎉 Persona Details Built Successfully!")
 
-# Step 2: Generate System Prompt
-if st.session_state.persona_details and not st.session_state.final_prompt:
+# Step 2: Show persona details and generate final prompt
+if st.session_state.persona_details:
     st.markdown("---")
-    st.subheader("✅ Persona Details")
+    st.subheader("✅ Assembled Persona Details")
     st.markdown(st.session_state.persona_details['full_persona_details'])
+
     if st.button("🚀 Confirm and Generate System Prompt", type="primary"):
-        with st.spinner("✍️ Generating the final system prompt..."):
+        with st.spinner("🤖 CTC Health AI writers are crafting the final prompt..."):
             final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
             st.session_state.final_prompt = final_prompt
         st.success("🎉 System Prompt Generated Successfully!")
 
-# Step 3: Create VAPI Assistant
-if st.session_state.final_prompt and not st.session_state.assistant_id:
+# Step 3: Create assistant and provide testing
+if st.session_state.final_prompt:
     st.markdown("---")
-    st.subheader("🛡️ System Prompt Preview")
-    st.code(st.session_state.final_prompt)
-    if st.button("🎙️ Create CTC Health Assistant", type="primary"):
-        with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
-            assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
-            assistant_id = autoprompt.create_vapi_assistant(
-                api_key=VAPI_PRIVATE_KEY,
-                system_prompt=st.session_state.final_prompt,
-                name=assistant_name
-            )
-            if assistant_id:
-                st.session_state.assistant_id = assistant_id
-                st.session_state.persona_name = assistant_name
-                st.success(f"✅ CTC Health Assistant '{assistant_name}' created successfully!")
-                st.experimental_rerun()
-            else:
-                st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
-
-# Step 4: Test the Assistant
-if st.session_state.assistant_id:
+    st.success("✅ Final prompt completed and ready for deployment.")
+    
     st.markdown("---")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.success(f"🎉 Assistant *{st.session_state.persona_name}* is ready for testing!")
-        st.info("Click the microphone button at the bottom-right and allow microphone access to start interacting.")
+    st.header("Step 6: Create & Test Your CTC Health Assistant")
+    
+    # Load CTC Health voice system keys
+    vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
+    vapi_public_key = os.getenv("VAPI_PUBLIC_KEY")
 
-    # Embed VAPI Web Client (voice button)
-    vapi_snippet = f"""
-<script>
-  (function(d, t) {{
-    var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
-    g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-    g.defer = true;
-    g.async = true;
-    s.parentNode.insertBefore(g, s);
-    g.onload = function() {{
-      window.vapiSDK.run({{
-        apiKey: "{VAPI_PUBLIC_KEY}",
-        assistant: "{st.session_state.assistant_id}",
-        config: {{}}
-      }});
-    }};
-  }})(document, "script");
-</script>
-"""
-    # Render the snippet in a sandboxed iframe
-    components.html(vapi_snippet, height=400)
+    if not vapi_private_key or not vapi_public_key or "YOUR_VAPI" in vapi_private_key:
+        st.warning("⚠️ CTC Health voice system keys not found in .env file. Please add them to enable voice integration.")
+        st.code("""
+        VAPI_PRIVATE_KEY=your_private_key_here
+        VAPI_PUBLIC_KEY=your_public_key_here
+        """)
+    else:
+        # Create assistant if not already created
+        if not st.session_state.assistant_id:
+            if st.button("🎙️ Create CTC Health Assistant", type="primary"):
+                with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
+                    assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
+                    assistant_id = autoprompt.create_vapi_assistant(
+                        api_key=vapi_private_key,
+                        system_prompt=st.session_state.final_prompt,
+                        name=assistant_name
+                    )
+                    if assistant_id:
+                        st.session_state.assistant_id = assistant_id
+                        st.success(f"✅ CTC Health Assistant created successfully!")
+                        # Auto-rerun to show testing interface
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
+        
+        # Show testing interface if assistant is created - NOW WITH EMBEDDED VAPI
+        if st.session_state.assistant_id:
+            st.markdown("---")
+            st.subheader("🎯 Test Your CTC Health Assistant")
+            
+            # Create two columns for better layout
+            col1, col2 = st.columns([2, 3])
+            
+            with col1:
+                st.info("""
+                **💡 How to Test:**
+                1. Look for the **call button** in the test area →
+                2. **Click** to start the voice call
+                3. **Allow** microphone access
+                4. **Speak** naturally with the assistant
+                5. Test various medical scenarios
+                
+                **🎙️ Note:** Microphone access is required for voice interaction.
+                """)
+                
+                # Show assistant details
+                st.success(f"""
+                **Assistant Created:**
+                - Persona: {st.session_state.persona_name}
+                - ID: `{st.session_state.assistant_id[:12]}...`
+                - Status: ✅ Ready for testing
+                """)
+                
+                # Optional: Add a button to recreate assistant
+                if st.button("🔄 Create New Assistant", type="secondary"):
+                    st.session_state.assistant_id = None
+                    st.rerun()
+            
+            with col2:
+                # Embed the Vapi component directly in the page
+                st.markdown("**🎙️ Voice Assistant Test Area:**")
+                
+                # Generate and display the embedded Vapi component
+                embed_html = create_vapi_embed_component(
+                    assistant_id=st.session_state.assistant_id,
+                    public_key=vapi_public_key,
+                    persona_name=st.session_state.persona_name
+                )
+                
+                # Use components.html to embed the Vapi interface
+                # Height is important for proper display
+                components.html(embed_html, height=500, scrolling=False)
+            
+            # Additional information below the testing area
+            st.markdown("---")
+            with st.expander("🔍 Troubleshooting", expanded=False):
+                st.markdown("""
+                **If the assistant doesn't appear:**
+                - Refresh the page and try again
+                - Check that your browser allows microphone access
+                - Ensure you're using Chrome, Firefox, Safari, or Edge
+                - Check your internet connection
+                
+                **If you can't hear or speak:**
+                - Check your microphone and speaker settings
+                - Ensure the browser has microphone permissions
+                - Try using headphones for better audio quality
+                
+                **Supported Browsers:** Chrome (recommended), Firefox, Safari, Edge
+                """)
+            
+            # Option to download the prompt for external use
+            with st.expander("📄 Download System Prompt", expanded=False):
+                st.download_button(
+                    label="⬇️ Download System Prompt",
+                    data=st.session_state.final_prompt,
+                    file_name=f"ctc_health_prompt_{st.session_state.assistant_id[:8]}.txt",
+                    mime="text/plain",
+                    help="Download the generated system prompt for use in other applications"
+                )
