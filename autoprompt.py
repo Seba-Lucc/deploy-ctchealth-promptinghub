@@ -17,7 +17,6 @@ from functools import partial
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
-# from IPython.display import Image, display
 from langsmith import traceable # For tracing agent execution on LangSmith
 
 # Load environment variables from .env file

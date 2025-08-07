@@ -1,9 +1,21 @@
-streamlit
-langchain-openai
-langgraph
-python-dotenv
-vapi_server_sdk
+# streamlit
+# langchain-openai
+# langgraph
+# python-dotenv
+# vapi_server_sdk
+# fastapi
+# uvicorn
+# vapi_python
+# python-multipart
+
+
 fastapi
-uvicorn
+uvicorn[standard]
 vapi_python
 python-multipart
+pyaudio
+fastapi
+uvicorn[standard]
+vapi_python
+python-multipart
+
