@@ -2,4 +2,8 @@ streamlit
 langchain-openai
 langgraph
 python-dotenv
-vapi_server_sdk 
+vapi_server_sdk
+fastapi
+uvicorn
+vapi_python
+python-multipart
