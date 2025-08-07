@@ -518,7 +518,7 @@ def get_segment_options():
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
 # ================================
-# NUOVE FUNZIONI PER SOLUZIONE IFRAME
+# VAPI IFRAME SOLUTION
 # ================================
 
 def create_vapi_iframe_page(assistant_id, public_key, persona_name="Generated Persona"):
@@ -778,9 +778,6 @@ def create_vapi_iframe_page(assistant_id, public_key, persona_name="Generated Pe
                 vapiInstance = window.vapiSDK.run({{
                     apiKey: PUBLIC_KEY,
                     assistant: ASSISTANT_ID,
-                    config: {{
-                        // Non usiamo position per evitare floating button
-                    }}
                 }});
                 
                 if (vapiInstance) {{
@@ -828,9 +825,6 @@ def create_vapi_iframe_page(assistant_id, public_key, persona_name="Generated Pe
                         endCall();
                     }});
                     
-                    // Il call inizia automaticamente quando si crea l'istanza
-                    console.log('⏳ Waiting for call to start...');
-                    
                 }} else {{
                     throw new Error('Failed to create VAPI instance');
                 }}
@@ -864,7 +858,7 @@ def create_vapi_iframe_page(assistant_id, public_key, persona_name="Generated Pe
         console.log('👨‍⚕️ Persona:', PERSONA_NAME);
         console.log('🆔 Assistant ID:', ASSISTANT_ID);
         
-        // Add some helpful instructions
+        // Add welcome message
         addToTranscript('System', 'Click "Start Voice Call" to begin talking with ' + PERSONA_NAME, 'system');
     </script>
 </body>
@@ -880,7 +874,7 @@ def create_vapi_iframe_solution(assistant_id, public_key, persona_name):
         # Crea il contenuto HTML
         html_content = create_vapi_iframe_page(assistant_id, public_key, persona_name)
         
-        # Codifica in base64 per data URL (questo permette di usare l'HTML direttamente nell'iframe)
+        # Codifica in base64 per data URL
         encoded = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
         data_url = f"data:text/html;base64,{encoded}"
         
@@ -891,87 +885,46 @@ def create_vapi_iframe_solution(assistant_id, public_key, persona_name):
         return None
 
 
-def show_vapi_iframe_solution(assistant_id, public_key, persona_name):
-    """Mostra la soluzione iframe per VAPI in Streamlit"""
+def show_vapi_voice_interface(assistant_id, public_key, persona_name):
+    """Mostra l'interfaccia voice per VAPI in Streamlit"""
     
     st.markdown("### 🎙️ Voice Assistant Interface")
     
-    # Informazioni sulla soluzione
-    col1, col2 = st.columns([2, 1])
+    # Informazioni
+    st.info(f"""
+    **Ready to test your {persona_name} assistant!**
     
-    with col1:
-        st.info("""
-        **🚀 Soluzione Iframe VAPI**
-        
-        Questa soluzione crea una pagina HTML completa con VAPI integrato e la mostra 
-        in un iframe. Dovrebbe funzionare immediatamente senza problemi di compatibilità!
-        
-        **Funzionalità:**
-        - ✅ Chiamata vocale bidirezionale  
-        - ✅ Trascrizione in tempo reale
-        - ✅ Interfaccia professionale
-        - ✅ Gestione stati della chiamata
-        """)
-    
-    with col2:
-        st.markdown("**🔧 Debug Info:**")
-        st.code(f"""
-Assistant: {assistant_id[:15]}...
-Public Key: {public_key[:15]}...
-Persona: {persona_name}
-        """)
+    Click the button below to load the voice interface, then start talking with your personalized medical assistant.
+    """)
     
     # Pulsante per caricare l'iframe
-    if st.button("🎙️ Carica Voice Assistant", type="primary", use_container_width=True):
-        with st.spinner("🔄 Caricamento voice assistant..."):
+    if st.button("🎙️ Load Voice Assistant", type="primary", use_container_width=True):
+        with st.spinner("🔄 Loading voice assistant..."):
             
             # Crea il data URL per l'iframe
             data_url = create_vapi_iframe_solution(assistant_id, public_key, persona_name)
             
             if data_url:
-                st.success("✅ Voice Assistant caricato con successo!")
+                st.success("✅ Voice Assistant loaded successfully!")
                 
                 # Mostra l'iframe
                 components.iframe(data_url, height=650, scrolling=True)
                 
-                # Istruzioni per l'utente
+                # Istruzioni semplici
                 st.markdown("""
-                **📋 Come usare il Voice Assistant:**
+                **📋 How to use:**
                 
-                1. **Clicca "Start Voice Call"** nell'interfaccia sopra
-                2. **Permetti l'accesso al microfono** quando richiesto dal browser
-                3. **Parla normalmente** - la conversazione apparirà in tempo reale
-                4. **Clicca "End Call"** per terminare la chiamata
-                
-                **💡 Suggerimenti:**
-                - Usa **Chrome, Firefox o Safari** per migliori performance
-                - Assicurati di avere una **connessione internet stabile**
-                - Se non funziona, **ricarica la pagina** e riprova
+                1. **Click "Start Voice Call"** in the interface above
+                2. **Allow microphone access** when prompted
+                3. **Start talking** - the conversation will appear in real-time
+                4. **Click "End Call"** when finished
                 """)
                 
             else:
-                st.error("❌ Errore nel caricamento del voice assistant")
-    
-    # Sezione di troubleshooting
-    with st.expander("🔧 Troubleshooting"):
-        st.markdown("""
-        **Se il voice assistant non funziona:**
-        
-        1. **Controlla le chiavi VAPI** - Assicurati che siano valide
-        2. **Permetti microfono** - Il browser deve avere accesso al microfono
-        3. **Usa HTTPS** - Alcune funzioni vocali richiedono connessione sicura
-        4. **Prova browser diverso** - Chrome e Firefox sono più compatibili
-        5. **Controlla console** - Apri Developer Tools (F12) per vedere errori
-        
-        **Configurazioni browser consigliate:**
-        - **Chrome**: Migliore compatibilità
-        - **Firefox**: Buona alternativa  
-        - **Safari**: Funziona ma può essere più lento
-        - **Edge**: Compatibile con limitazioni
-        """)
+                st.error("❌ Error loading voice assistant")
 
 # ================================
-# IL TUO CODICE ESISTENTE CONTINUA QUI
+# MAIN APPLICATION
 # ================================
 
 st.title("🏥 CTC Health Solution - Medical Training Platform")
@@ -1099,42 +1052,6 @@ if 'assistant_id' not in st.session_state:
 if 'persona_name' not in st.session_state:
     st.session_state.persona_name = ""
 
-# Demo Mode Toggle
-st.sidebar.markdown("## 🚀 Quick Demo")
-demo_mode = st.sidebar.checkbox(
-    "Enable Demo Mode", 
-    help="Skip all steps and jump directly to the testing interface with sample data"
-)
-
-if demo_mode:
-    st.sidebar.success("Demo Mode Enabled!")
-    if st.sidebar.button("🎯 Jump to Testing Interface", type="primary"):
-        # Set demo data
-        st.session_state.persona_details = {
-            'persona_header': 'Dr. Maria Rossi',
-            'full_persona_details': """
-## Demo Persona: Dr. Maria Rossi
-
-**Demographics:** 48-year-old oncologist, private practice in Milan, Italy
-
-**Specialty:** Breast cancer and immunotherapy
-
-**Psychographic Profile:**
-- Risk Tolerance: 0.7 (Moderately bold)
-- Brand Loyalty: 0.3 (Open to new options)  
-- Research Orientation: 0.8 (Data-driven)
-- Recognition Need: 0.2 (Low-profile)
-- Patient Empathy: 0.9 (Strong advocate)
-
-**Clinical Context:** Specializes in early-stage breast cancer treatment with focus on personalized medicine approaches.
-            """
-        }
-        st.session_state.final_prompt = "You are Dr. Maria Rossi, a 48-year-old oncologist specializing in breast cancer treatment. You practice evidence-based medicine and prioritize patient care above all else. Respond as this persona would in a medical consultation context."
-        st.session_state.persona_name = "Dr. Maria Rossi"
-        # Set a demo assistant ID (you can replace with a real one)
-        st.session_state.assistant_id = "demo_assistant_123"
-        st.rerun()
-
 # Step 1: Build Persona Details
 if not st.session_state.persona_details:
     if st.button("📝 Build Persona Details", type="primary"):
@@ -1147,66 +1064,40 @@ if not st.session_state.persona_details:
     - Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
     """
 
-        if demo_mode:
-            # Skip AI processing in demo mode
-            st.session_state.persona_details = {
-                'persona_header': 'Dr. Maria Rossi',
-                'full_persona_details': """
-## Demo Persona: Dr. Maria Rossi
-
-**Demographics:** 48-year-old oncologist, private practice in Milan, Italy
-
-**Specialty:** Breast cancer and immunotherapy
-
-**Psychographic Profile:**
-- Risk Tolerance: 0.7 (Moderately bold)
-- Brand Loyalty: 0.3 (Open to new options)  
-- Research Orientation: 0.8 (Data-driven)
-- Recognition Need: 0.2 (Low-profile)
-- Patient Empathy: 0.9 (Strong advocate)
-
-**Clinical Context:** Specializes in early-stage breast cancer treatment with focus on personalized medicine approaches.
-                """
-            }
-            st.session_state.persona_name = "Dr. Maria Rossi"
-            st.success("🎉 Demo Persona Details Loaded!")
-        else:
-            with st.spinner("🤖 CTC Health AI agents are building the persona... This may take a moment."):
-                persona_state = autoprompt.build_persona_details(
-                    header_input=header_input,
-                    segment_input=segment_choice,
-                    context_input=context_input,
-                    psychographics_input=psychographics_input_str,
-                    objectives_input=objectives_input
-                )
-                st.session_state.persona_details = persona_state
-                
-                # Extract persona name from header
-                if persona_state and 'persona_header' in persona_state:
-                    header_text = persona_state['persona_header']
-                    if 'Dr.' in header_text:
-                        name_part = header_text.split('Dr.')[1].split(',')[0].split(' is a')[0].strip()
-                        st.session_state.persona_name = f"Dr. {name_part}"
-                    else:
-                        st.session_state.persona_name = "Generated Persona"
-                st.success("🎉 Persona Details Built Successfully!")
+        with st.spinner("🤖 CTC Health AI agents are building the persona... This may take a moment."):
+            persona_state = autoprompt.build_persona_details(
+                header_input=header_input,
+                segment_input=segment_choice,
+                context_input=context_input,
+                psychographics_input=psychographics_input_str,
+                objectives_input=objectives_input
+            )
+            st.session_state.persona_details = persona_state
+            
+            # Extract persona name from header
+            if persona_state and 'persona_header' in persona_state:
+                header_text = persona_state['persona_header']
+                if 'Dr.' in header_text:
+                    name_part = header_text.split('Dr.')[1].split(',')[0].split(' is a')[0].strip()
+                    st.session_state.persona_name = f"Dr. {name_part}"
+                else:
+                    st.session_state.persona_name = "Generated Persona"
+        
+        st.success("🎉 Persona Details Built Successfully!")
 
 # Step 2: Show persona details and generate final prompt
 if st.session_state.persona_details:
     st.markdown("---")
     st.subheader("✅ Assembled Persona Details")
+    
+    # Show the complete persona details as before
     st.markdown(st.session_state.persona_details['full_persona_details'])
 
     if st.button("🚀 Confirm and Generate System Prompt", type="primary"):
-        if demo_mode:
-            # Skip AI processing in demo mode
-            st.session_state.final_prompt = "You are Dr. Maria Rossi, a 48-year-old oncologist specializing in breast cancer treatment. You practice evidence-based medicine and prioritize patient care above all else. Respond as this persona would in a medical consultation context."
-            st.success("🎉 Demo System Prompt Generated!")
-        else:
-            with st.spinner("🤖 CTC Health AI writers are crafting the final prompt..."):
-                final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
-                st.session_state.final_prompt = final_prompt
-            st.success("🎉 System Prompt Generated Successfully!")
+        with st.spinner("🤖 CTC Health AI writers are crafting the final prompt..."):
+            final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
+            st.session_state.final_prompt = final_prompt
+        st.success("🎉 System Prompt Generated Successfully!")
 
 # Step 3: Create assistant and provide testing
 if st.session_state.final_prompt:
@@ -1230,34 +1121,27 @@ if st.session_state.final_prompt:
         # Create assistant if not already created
         if not st.session_state.assistant_id:
             if st.button("🎙️ Create CTC Health Assistant", type="primary"):
-                if demo_mode:
-                    # Skip VAPI call in demo mode
-                    st.session_state.assistant_id = f"demo_assistant_{int(time.time())}"
-                    st.success("✅ Demo CTC Health Assistant created!")
-                    st.info("ℹ️ In demo mode, the voice widget will not be functional. Add real VAPI keys to test with voice.")
-                    st.rerun()
-                else:
-                    with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
-                        assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
-                        assistant_id = autoprompt.create_vapi_assistant(
-                            api_key=vapi_private_key,
-                            system_prompt=st.session_state.final_prompt,
-                            name=assistant_name
-                        )
-                        if assistant_id:
-                            st.session_state.assistant_id = assistant_id
-                            st.success(f"✅ CTC Health Assistant created successfully!")
-                            # Auto-rerun to show testing interface
-                            st.rerun()
-                        else:
-                            st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
+                with st.spinner("🔧 Creating your personalized CTC Health assistant..."):
+                    assistant_name = f"CTC-Health-Assistant-{int(time.time())}"
+                    assistant_id = autoprompt.create_vapi_assistant(
+                        api_key=vapi_private_key,
+                        system_prompt=st.session_state.final_prompt,
+                        name=assistant_name
+                    )
+                    if assistant_id:
+                        st.session_state.assistant_id = assistant_id
+                        st.success(f"✅ CTC Health Assistant created successfully!")
+                        # Auto-rerun to show testing interface
+                        st.rerun()
+                    else:
+                        st.error("❌ Failed to create CTC Health assistant. Please check your API keys.")
         
         # Show testing interface if assistant is created
         if st.session_state.assistant_id:
             st.markdown("---")
             st.subheader("🎯 Test Your CTC Health Assistant")
             
-            # Display success message
+            # Display success message and assistant info
             col1, col2, col3 = st.columns([1, 2, 1])
             
             with col2:
@@ -1272,13 +1156,9 @@ if st.session_state.final_prompt:
                     **Status:** ✅ Active and ready for testing
                     """)
             
-            # Check if we have valid VAPI keys and not in demo mode
-            if not demo_mode and vapi_public_key and "YOUR_VAPI" not in vapi_public_key:
-                # Use the new iframe solution
-                show_vapi_iframe_solution(
-                    assistant_id=st.session_state.assistant_id,
-                    public_key=vapi_public_key,
-                    persona_name=st.session_state.persona_name
-                )
-            else:
-                st.info("🎯 **Demo Mode Active** - Enable real VAPI keys and disable demo mode to test voice functionality")
+            # Show voice interface
+            show_vapi_voice_interface(
+                assistant_id=st.session_state.assistant_id,
+                public_key=vapi_public_key,
+                persona_name=st.session_state.persona_name
+            )
