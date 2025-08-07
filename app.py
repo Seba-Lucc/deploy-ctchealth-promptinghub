@@ -495,15 +495,420 @@
 
 
 
+# # app.py
+# import streamlit as st
+# import autoprompt
+# from langchain_openai import ChatOpenAI
+# import time
+# import streamlit.components.v1 as components
+# import os
+# from dotenv import load_dotenv
+# import base64
+
+# load_dotenv()
+
+# st.set_page_config(layout="wide", page_title="Persona Prompt Generator")
+
+# def get_segment_options():
+#     """Helper to read segment options from the markdown file."""
+#     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
+#     return [seg.strip() for seg in content.split('---') if seg.strip()]
+
+# def embed_vapi_widget(vapi_public_key, assistant_id, show_widget=True):
+#     """
+#     Embeds the Vapi Web Widget in the Streamlit app.
+    
+#     Args:
+#         vapi_public_key: Your Vapi public API key
+#         assistant_id: The ID of the created assistant
+#         show_widget: Whether to show the widget immediately
+#     """
+    
+#     # Personalizzazione del widget
+#     widget_config = {
+#         "position": "bottom-right",  # Posizione: bottom-right, bottom-left, top-right, top-left
+#         "offset": "40px",  # Distanza dal bordo
+#         "width": "50px",  # Larghezza del pulsante
+#         "height": "50px",  # Altezza del pulsante
+#         "buttonColor": "#0084ff",  # Colore del pulsante
+#         "buttonTextColor": "#ffffff",  # Colore del testo/icona
+#     }
+    
+#     vapi_html = f"""
+#     <div id="vapi-widget-container">
+#         <!-- Carica il Web Widget di Vapi -->
+#         <script src="https://cdn.vapi.ai/widget.js"></script>
+        
+#         <script>
+#         (function() {{
+#             // Configurazione del widget
+#             const config = {{
+#                 apiKey: '{vapi_public_key}',
+#                 assistantId: '{assistant_id}',
+                
+#                 // Configurazione UI
+#                 position: '{widget_config["position"]}',
+#                 offset: '{widget_config["offset"]}',
+#                 width: '{widget_config["width"]}',
+#                 height: '{widget_config["height"]}',
+                
+#                 // Stile personalizzato
+#                 buttonColor: '{widget_config["buttonColor"]}',
+#                 buttonTextColor: '{widget_config["buttonTextColor"]}',
+                
+#                 // Mostra automaticamente il widget
+#                 show: {str(show_widget).lower()},
+                
+#                 // Modalità: 'voice' per solo voce, 'chat' per chat+voce
+#                 mode: 'voice',
+                
+#                 // Callbacks per eventi
+#                 onCallStart: function() {{
+#                     console.log('Vapi: Chiamata iniziata');
+#                     // Puoi aggiungere logica personalizzata qui
+#                 }},
+                
+#                 onCallEnd: function() {{
+#                     console.log('Vapi: Chiamata terminata');
+#                     // Puoi aggiungere logica personalizzata qui
+#                 }},
+                
+#                 onError: function(error) {{
+#                     console.error('Vapi Error:', error);
+#                     // Gestione errori
+#                 }},
+                
+#                 onTranscript: function(transcript) {{
+#                     console.log('Transcript:', transcript);
+#                     // Puoi catturare il transcript se necessario
+#                 }},
+                
+#                 // Messaggi personalizzati
+#                 strings: {{
+#                     title: "AI Assistant",
+#                     subtitle: "Click to start voice conversation",
+#                     endCallButton: "End Call",
+#                     startCallButton: "Start Call"
+#                 }}
+#             }};
+            
+#             // Inizializza il widget
+#             try {{
+#                 window.vapiWidget = new Vapi.Widget(config);
+#                 console.log('Vapi Widget initialized successfully');
+                
+#                 // Opzionale: Aggiungi un pulsante personalizzato per mostrare/nascondere il widget
+#                 window.toggleVapiWidget = function() {{
+#                     if (window.vapiWidget) {{
+#                         window.vapiWidget.toggle();
+#                     }}
+#                 }};
+                
+#             }} catch (error) {{
+#                 console.error('Failed to initialize Vapi Widget:', error);
+#             }}
+#         }})();
+#         </script>
+        
+#         <!-- Container per eventuali elementi custom -->
+#         <div style="position: fixed; top: 10px; right: 10px; z-index: 9998;">
+#             <button 
+#                 onclick="toggleVapiWidget()" 
+#                 style="
+#                     display: none; /* Nascosto di default, mostra se necessario */
+#                     padding: 8px 16px;
+#                     background: #0084ff;
+#                     color: white;
+#                     border: none;
+#                     border-radius: 20px;
+#                     cursor: pointer;
+#                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+#                     font-size: 14px;
+#                     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+#                 ">
+#                 Toggle Assistant
+#             </button>
+#         </div>
+#     </div>
+    
+#     <style>
+#         /* Stili aggiuntivi per il widget se necessario */
+#         #vapi-widget-container {{
+#             position: relative;
+#             z-index: 9999;
+#         }}
+#     </style>
+#     """
+    
+#     # Renderizza il widget
+#     components.html(vapi_html, height=0, scrolling=False)
+
+# st.title("👨‍⚕️ Persona Prompt Generator")
+# st.markdown("""
+# Welcome to the Persona Prompt Generator! This tool uses a multi-agent system 
+# to help you create a detailed doctor persona for role-playing scenarios.
+
+# Follow the steps below to build your persona, then click "Generate System Prompt" at the bottom.
+# """)
+
+# # --- Main UI ---
+# st.header("Step 1: Persona Header")
+# header_input = st.text_area(
+#     "Provide basic details for the doctor persona: Name, Title, Age, Gender, Practice Setting, and Geography.",
+#     "Dr. Anya Sharma, Oncologist, 45, female, private practice, New York",
+#     help="You can provide partial info, and the AI will complete it."
+# )
+
+# st.header("Step 2: Customer Segmentation")
+# segment_options = get_segment_options()
+# # Use format_func to display only the title of the segment
+# segment_choice = st.radio(
+#     "Please select a customer segment for this persona:",
+#     options=segment_options,
+#     format_func=lambda x: x.split('\n')[0].replace('###','').strip()
+# )
+
+# # Display the description of the selected segment
+# if segment_choice:
+#     with st.expander("View Selected Segment Description", expanded=True):
+#         st.markdown(segment_choice)
+
+# st.header("Step 3: Clinical Context")
+# st.markdown("Provide details about the persona's clinical practice. Use the points below for guidance:")
+# st.info("""
+# **Key areas to describe:**
+# - Therapeutic Area / Sub-specialty – e.g., "Hematology-Oncology and Multiple Myeloma".
+# - Typical Patient Mix – percentage of newly diagnosed patients, lines of therapy, comorbidities.
+# - Key Clinical Drivers – survival, progression-free, side-effect profile, dosing convenience.
+# - Practice Metrics – infusion chair capacity, average pts/day, clinical trial participation.
+# """)
+
+# context_input = st.text_area(
+#     "Describe the persona's clinical context (Therapeutic Area, Patient Mix, etc.).",
+#     "Specializes in late-stage lung cancer. Sees a mix of newly diagnosed and treatment-experienced patients.",
+#     help="You can provide partial info, and the AI will help complete it."
+# )
+
+# st.header("Step 4: Psychographics & Motivations")
+# st.markdown("Use the sliders to define the persona's psychographic profile (0.0 to 1.0).")
+
+# # The labels and help text are derived from 4psychographics.md
+# # Risk Tolerance
+# st.markdown("**Risk Tolerance**")
+# col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+# with col1:
+#     st.caption("Conservative")
+# with col2:
+#     risk_tolerance = st.slider("Risk Tolerance", 0.0, 1.0, 0.7, step=0.1, label_visibility="collapsed", format="%.1f")
+# with col3:
+#     st.caption("Bold Experimenter")
+
+# # Brand Loyalty
+# st.markdown("**Brand Loyalty**")
+# col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+# with col1:
+#     st.caption("Low")
+# with col2:
+#     brand_loyalty = st.slider("Brand Loyalty", 0.0, 1.0, 0.3, step=0.1, label_visibility="collapsed", format="%.1f")
+# with col3:
+#     st.caption("High")
+
+# # Research Orientation
+# st.markdown("**Research Orientation**")
+# col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+# with col1:
+#     st.caption("Anecdote-driven")
+# with col2:
+#     research_orientation = st.slider("Research Orientation", 0.0, 1.0, 0.8, step=0.1, label_visibility="collapsed", format="%.1f")
+# with col3:
+#     st.caption("Data-heavy")
+
+# # Recognition Need
+# st.markdown("**Recognition Need**")
+# col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+# with col1:
+#     st.caption("Seeks podium")
+# with col2:
+#     recognition_need = st.slider("Recognition Need", 0.0, 1.0, 0.2, step=0.1, label_visibility="collapsed", format="%.1f")
+# with col3:
+#     st.caption("Low-profile")
+
+# # Patient Empathy
+# st.markdown("**Patient Empathy**")
+# col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+# with col1:
+#     st.caption("Transactional")
+# with col2:
+#     patient_empathy = st.slider("Patient Empathy", 0.0, 1.0, 0.9, step=0.1, label_visibility="collapsed", format="%.1f")
+# with col3:
+#     st.caption("Advocate")
+
+# st.header("Step 5: Product & Call Objectives")
+# st.markdown("Describe the product, call objectives, and the context for the role-play.")
+# st.info("""
+# **Key areas to describe:**
+# - **Product in Focus:** e.g., "Xaltrava 25 mg SC"
+# - **Training Objective(s):** e.g., "Probe for unmet needs, handle safety concerns"
+# - **Key Messages:** e.g., "<3 crisp value props>"
+# - **Anticipated Objections:** e.g., "Too new, budget impact, no OS data yet"
+# - **Competitor Snapshot:** e.g., "Drug A: oral, cheaper; Drug B: same MoA"
+# - **Desired Rep Skill:** e.g., "Open-ended questioning, objection-reframe, close"
+# """)
+# objectives_input = st.text_area(
+#     "Describe the product and call objectives.",
+#     "The product is a new immunotherapy, Xaltorvima. The rep needs to handle objections about its novel mechanism of action.",
+#     help="You can provide partial info, and the AI will help complete it."
+# )
+
+# if 'persona_details' not in st.session_state:
+#     st.session_state.persona_details = None
+# if 'final_prompt' not in st.session_state:
+#     st.session_state.final_prompt = ""
+# if 'assistant_id' not in st.session_state:
+#     st.session_state.assistant_id = None
+# if 'widget_shown' not in st.session_state:
+#     st.session_state.widget_shown = False
+
+# if not st.session_state.persona_details:
+#     if st.button("📝 Build Persona Details", type="primary"):
+#         # Format the psychographics input string from the slider values
+#         psychographics_input_str = f"""
+#     - Risk Tolerance: {risk_tolerance} (0=Conservative, 1=Bold Experimenter)
+#     - Brand Loyalty: {brand_loyalty} (0=Low, 1=High)
+#     - Research Orientation: {research_orientation} (0=Anecdote-driven, 1=Data-heavy)
+#     - Recognition Need: {recognition_need} (0=Seeks podium, 1=Low-profile)
+#     - Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
+#     """
+
+#         with st.spinner("🤖 The agents are building the persona... This may take a moment."):
+#             # This function will be created in the next step inside autoprompt.py
+#             persona_state = autoprompt.build_persona_details(
+#                 header_input=header_input,
+#                 segment_input=segment_choice,
+#                 context_input=context_input,
+#                 psychographics_input=psychographics_input_str,
+#                 objectives_input=objectives_input
+#             )
+#             st.session_state.persona_details = persona_state
+        
+#         st.success("🎉 Persona Details Built!")
+
+# if st.session_state.persona_details:
+#     st.markdown("---")
+#     st.subheader("Confirm Assembled Persona Details")
+#     st.markdown(st.session_state.persona_details['full_persona_details'])
+
+#     if st.button("🚀 Confirm and Generate Final Prompt", type="primary"):
+#         with st.spinner("🤖 The writer agents are crafting the final prompt..."):
+#             final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
+#             st.session_state.final_prompt = final_prompt
+#         st.success("🎉 System Prompt Generated!")
+
+# if st.session_state.final_prompt:
+#     st.markdown("---")
+#     st.success("✅ Final prompt completed and is ready for use.")
+    
+#     st.markdown("---")
+#     st.header("Step 6: Test with Vapi")
+    
+#     # Load keys from .env file
+#     vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
+#     vapi_public_key = os.getenv("VAPI_PUBLIC_KEY")
+
+#     if not vapi_private_key or not vapi_public_key or "YOUR_VAPI" in vapi_private_key:
+#         st.warning("⚠️ Vapi keys not found in .env file. Please add them to enable Vapi integration.")
+#         st.code("""
+# # Add to your .env file:
+# VAPI_PRIVATE_KEY=your_private_key_here
+# VAPI_PUBLIC_KEY=your_public_key_here
+#         """)
+#     else:
+#         col1, col2 = st.columns(2)
+        
+#         with col1:
+#             if st.button("🎙️ Create Vapi Assistant", type="primary", disabled=st.session_state.assistant_id is not None):
+#                 with st.spinner("Creating Vapi assistant..."):
+#                     # Use a unique name for the assistant to avoid conflicts
+#                     assistant_name = f"Persona-Role-Play-{int(time.time())}"
+#                     assistant_id = autoprompt.create_vapi_assistant(
+#                         api_key=vapi_private_key,
+#                         system_prompt=st.session_state.final_prompt,
+#                         name=assistant_name
+#                     )
+#                     if assistant_id:
+#                         st.session_state.assistant_id = assistant_id
+#                         st.success(f"✅ Assistant created! ID: {assistant_id}")
+#                         st.info("The voice assistant widget will appear in the bottom-right corner.")
+#                         # Mostra automaticamente il widget dopo la creazione
+#                         st.session_state.widget_shown = True
+#                         st.rerun()
+#                     else:
+#                         st.error("❌ Failed to create Vapi assistant. Please check your API keys.")
+        
+#         with col2:
+#             if st.session_state.assistant_id:
+#                 if st.button("🔄 Create New Assistant", help="Create a new assistant with the same prompt"):
+#                     st.session_state.assistant_id = None
+#                     st.session_state.widget_shown = False
+#                     st.rerun()
+        
+#         # Se l'assistente è stato creato, mostra il widget
+#         if st.session_state.assistant_id and st.session_state.widget_shown:
+#             st.markdown("---")
+#             st.subheader("🎤 Voice Assistant Ready!")
+            
+#             # Informazioni per l'utente
+#             with st.expander("ℹ️ How to use the voice assistant", expanded=True):
+#                 st.markdown("""
+#                 ### Instructions:
+#                 1. **Look for the blue chat bubble** in the bottom-right corner of the page
+#                 2. **Click on it** to start the voice conversation
+#                 3. **Allow microphone access** when prompted by your browser
+#                 4. **Start speaking** - the assistant will respond in real-time
+#                 5. **Click the button again** to end the conversation
+                
+#                 ### Troubleshooting:
+#                 - **Can't see the widget?** Try refreshing the page (F5)
+#                 - **Microphone not working?** Check that you're on HTTPS and have granted permissions
+#                 - **Widget not responding?** Check the browser console for errors (F12)
+                
+#                 ### Important:
+#                 - The assistant is configured with your generated persona prompt
+#                 - The conversation is completely private and secure
+#                 - You can create a new assistant anytime with the button above
+#                 """)
+            
+#             # Embed il widget Vapi
+#             embed_vapi_widget(
+#                 vapi_public_key=vapi_public_key,
+#                 assistant_id=st.session_state.assistant_id,
+#                 show_widget=True
+#             )
+            
+#             # Mostra l'ID dell'assistente per riferimento
+#             st.info(f"🤖 Assistant ID: `{st.session_state.assistant_id}`")
+            
+#             # Link alla dashboard Vapi
+#             st.markdown(
+#                 f"[View in Vapi Dashboard →](https://dashboard.vapi.ai/assistants/{st.session_state.assistant_id})",
+#                 unsafe_allow_html=True
+#             )
+
+
 # app.py
+
+import os
+import time
+import base64
+
 import streamlit as st
+import streamlit.components.v1 as components
+from dotenv import load_dotenv
+from st_audiorec import st_audiorec
+import requests
+
 import autoprompt
 from langchain_openai import ChatOpenAI
-import time
-import streamlit.components.v1 as components
-import os
-from dotenv import load_dotenv
-import base64
 
 load_dotenv()
 
@@ -517,141 +922,67 @@ def get_segment_options():
 def embed_vapi_widget(vapi_public_key, assistant_id, show_widget=True):
     """
     Embeds the Vapi Web Widget in the Streamlit app.
-    
-    Args:
-        vapi_public_key: Your Vapi public API key
-        assistant_id: The ID of the created assistant
-        show_widget: Whether to show the widget immediately
     """
-    
-    # Personalizzazione del widget
     widget_config = {
-        "position": "bottom-right",  # Posizione: bottom-right, bottom-left, top-right, top-left
-        "offset": "40px",  # Distanza dal bordo
-        "width": "50px",  # Larghezza del pulsante
-        "height": "50px",  # Altezza del pulsante
-        "buttonColor": "#0084ff",  # Colore del pulsante
-        "buttonTextColor": "#ffffff",  # Colore del testo/icona
+        "position": "bottom-right",
+        "offset": "40px",
+        "width": "50px",
+        "height": "50px",
+        "buttonColor": "#0084ff",
+        "buttonTextColor": "#ffffff",
     }
-    
+
     vapi_html = f"""
     <div id="vapi-widget-container">
-        <!-- Carica il Web Widget di Vapi -->
-        <script src="https://cdn.vapi.ai/widget.js"></script>
-        
-        <script>
-        (function() {{
-            // Configurazione del widget
-            const config = {{
-                apiKey: '{vapi_public_key}',
-                assistantId: '{assistant_id}',
-                
-                // Configurazione UI
-                position: '{widget_config["position"]}',
-                offset: '{widget_config["offset"]}',
-                width: '{widget_config["width"]}',
-                height: '{widget_config["height"]}',
-                
-                // Stile personalizzato
-                buttonColor: '{widget_config["buttonColor"]}',
-                buttonTextColor: '{widget_config["buttonTextColor"]}',
-                
-                // Mostra automaticamente il widget
-                show: {str(show_widget).lower()},
-                
-                // Modalità: 'voice' per solo voce, 'chat' per chat+voce
-                mode: 'voice',
-                
-                // Callbacks per eventi
-                onCallStart: function() {{
-                    console.log('Vapi: Chiamata iniziata');
-                    // Puoi aggiungere logica personalizzata qui
-                }},
-                
-                onCallEnd: function() {{
-                    console.log('Vapi: Chiamata terminata');
-                    // Puoi aggiungere logica personalizzata qui
-                }},
-                
-                onError: function(error) {{
-                    console.error('Vapi Error:', error);
-                    // Gestione errori
-                }},
-                
-                onTranscript: function(transcript) {{
-                    console.log('Transcript:', transcript);
-                    // Puoi catturare il transcript se necessario
-                }},
-                
-                // Messaggi personalizzati
-                strings: {{
-                    title: "AI Assistant",
-                    subtitle: "Click to start voice conversation",
-                    endCallButton: "End Call",
-                    startCallButton: "Start Call"
-                }}
-            }};
-            
-            // Inizializza il widget
-            try {{
-                window.vapiWidget = new Vapi.Widget(config);
-                console.log('Vapi Widget initialized successfully');
-                
-                // Opzionale: Aggiungi un pulsante personalizzato per mostrare/nascondere il widget
-                window.toggleVapiWidget = function() {{
-                    if (window.vapiWidget) {{
-                        window.vapiWidget.toggle();
-                    }}
-                }};
-                
-            }} catch (error) {{
-                console.error('Failed to initialize Vapi Widget:', error);
-            }}
-        }})();
-        </script>
-        
-        <!-- Container per eventuali elementi custom -->
-        <div style="position: fixed; top: 10px; right: 10px; z-index: 9998;">
-            <button 
-                onclick="toggleVapiWidget()" 
-                style="
-                    display: none; /* Nascosto di default, mostra se necessario */
-                    padding: 8px 16px;
-                    background: #0084ff;
-                    color: white;
-                    border: none;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    font-size: 14px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-                ">
-                Toggle Assistant
-            </button>
-        </div>
-    </div>
-    
-    <style>
-        /* Stili aggiuntivi per il widget se necessario */
-        #vapi-widget-container {{
-            position: relative;
-            z-index: 9999;
+      <script src="https://cdn.vapi.ai/widget.js"></script>
+      <script>
+      (function() {{
+        const config = {{
+          apiKey: '{vapi_public_key}',
+          assistantId: '{assistant_id}',
+          position: '{widget_config["position"]}',
+          offset: '{widget_config["offset"]}',
+          width: '{widget_config["width"]}',
+          height: '{widget_config["height"]}',
+          buttonColor: '{widget_config["buttonColor"]}',
+          buttonTextColor: '{widget_config["buttonTextColor"]}',
+          show: {str(show_widget).lower()},
+          mode: 'voice',
+          onCallStart: () => console.log('Vapi: Call started'),
+          onCallEnd: () => console.log('Vapi: Call ended'),
+          onError: error => console.error('Vapi Error:', error),
+          onTranscript: transcript => console.log('Transcript:', transcript),
+          strings: {{
+            title: "AI Assistant",
+            subtitle: "Click to start voice conversation",
+            endCallButton: "End Call",
+            startCallButton: "Start Call"
+          }}
+        }};
+        try {{
+          window.vapiWidget = new Vapi.Widget(config);
+          window.toggleVapiWidget = () => window.vapiWidget.toggle();
+        }} catch (e) {{
+          console.error('Widget init failed:', e);
         }}
-    </style>
+      }})();
+      </script>
+      <style>
+        #vapi-widget-container {{ position: relative; z-index: 9999; }}
+      </style>
+    </div>
     """
-    
-    # Renderizza il widget
     components.html(vapi_html, height=0, scrolling=False)
+
 
 st.title("👨‍⚕️ Persona Prompt Generator")
 st.markdown("""
-Welcome to the Persona Prompt Generator! This tool uses a multi-agent system 
+Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
 to help you create a detailed doctor persona for role-playing scenarios.
-
 Follow the steps below to build your persona, then click "Generate System Prompt" at the bottom.
 """)
 
-# --- Main UI ---
+# Step 1
 st.header("Step 1: Persona Header")
 header_input = st.text_area(
     "Provide basic details for the doctor persona: Name, Title, Age, Gender, Practice Setting, and Geography.",
@@ -659,100 +990,63 @@ header_input = st.text_area(
     help="You can provide partial info, and the AI will complete it."
 )
 
+# Step 2
 st.header("Step 2: Customer Segmentation")
 segment_options = get_segment_options()
-# Use format_func to display only the title of the segment
 segment_choice = st.radio(
     "Please select a customer segment for this persona:",
     options=segment_options,
     format_func=lambda x: x.split('\n')[0].replace('###','').strip()
 )
-
-# Display the description of the selected segment
 if segment_choice:
     with st.expander("View Selected Segment Description", expanded=True):
         st.markdown(segment_choice)
 
+# Step 3
 st.header("Step 3: Clinical Context")
 st.markdown("Provide details about the persona's clinical practice. Use the points below for guidance:")
 st.info("""
 **Key areas to describe:**
-- Therapeutic Area / Sub-specialty – e.g., "Hematology-Oncology and Multiple Myeloma".
-- Typical Patient Mix – percentage of newly diagnosed patients, lines of therapy, comorbidities.
-- Key Clinical Drivers – survival, progression-free, side-effect profile, dosing convenience.
-- Practice Metrics – infusion chair capacity, average pts/day, clinical trial participation.
+- Therapeutic Area / Sub-specialty
+- Typical Patient Mix
+- Key Clinical Drivers
+- Practice Metrics
 """)
-
 context_input = st.text_area(
     "Describe the persona's clinical context (Therapeutic Area, Patient Mix, etc.).",
     "Specializes in late-stage lung cancer. Sees a mix of newly diagnosed and treatment-experienced patients.",
     help="You can provide partial info, and the AI will help complete it."
 )
 
+# Step 4
 st.header("Step 4: Psychographics & Motivations")
 st.markdown("Use the sliders to define the persona's psychographic profile (0.0 to 1.0).")
 
-# The labels and help text are derived from 4psychographics.md
-# Risk Tolerance
-st.markdown("**Risk Tolerance**")
-col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-with col1:
-    st.caption("Conservative")
-with col2:
-    risk_tolerance = st.slider("Risk Tolerance", 0.0, 1.0, 0.7, step=0.1, label_visibility="collapsed", format="%.1f")
-with col3:
-    st.caption("Bold Experimenter")
+def slider_row(label, low_label, high_label, key, default):
+    st.markdown(f"**{label}**")
+    col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
+    with col1: st.caption(low_label)
+    with col2:
+        val = st.slider(label, 0.0, 1.0, default, step=0.1, label_visibility="collapsed", format="%.1f", key=key)
+    with col3: st.caption(high_label)
+    return val
 
-# Brand Loyalty
-st.markdown("**Brand Loyalty**")
-col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-with col1:
-    st.caption("Low")
-with col2:
-    brand_loyalty = st.slider("Brand Loyalty", 0.0, 1.0, 0.3, step=0.1, label_visibility="collapsed", format="%.1f")
-with col3:
-    st.caption("High")
+risk_tolerance       = slider_row("Risk Tolerance", "Conservative", "Bold Experimenter", "risk",       0.7)
+brand_loyalty        = slider_row("Brand Loyalty",   "Low",         "High",           "loyalty",   0.3)
+research_orientation = slider_row("Research Orientation", "Anecdote-driven", "Data-heavy", "research", 0.8)
+recognition_need     = slider_row("Recognition Need", "Seeks podium", "Low-profile",     "recognition",0.2)
+patient_empathy      = slider_row("Patient Empathy", "Transactional","Advocate",        "empathy",   0.9)
 
-# Research Orientation
-st.markdown("**Research Orientation**")
-col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-with col1:
-    st.caption("Anecdote-driven")
-with col2:
-    research_orientation = st.slider("Research Orientation", 0.0, 1.0, 0.8, step=0.1, label_visibility="collapsed", format="%.1f")
-with col3:
-    st.caption("Data-heavy")
-
-# Recognition Need
-st.markdown("**Recognition Need**")
-col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-with col1:
-    st.caption("Seeks podium")
-with col2:
-    recognition_need = st.slider("Recognition Need", 0.0, 1.0, 0.2, step=0.1, label_visibility="collapsed", format="%.1f")
-with col3:
-    st.caption("Low-profile")
-
-# Patient Empathy
-st.markdown("**Patient Empathy**")
-col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-with col1:
-    st.caption("Transactional")
-with col2:
-    patient_empathy = st.slider("Patient Empathy", 0.0, 1.0, 0.9, step=0.1, label_visibility="collapsed", format="%.1f")
-with col3:
-    st.caption("Advocate")
-
+# Step 5
 st.header("Step 5: Product & Call Objectives")
 st.markdown("Describe the product, call objectives, and the context for the role-play.")
 st.info("""
-**Key areas to describe:**
-- **Product in Focus:** e.g., "Xaltrava 25 mg SC"
-- **Training Objective(s):** e.g., "Probe for unmet needs, handle safety concerns"
-- **Key Messages:** e.g., "<3 crisp value props>"
-- **Anticipated Objections:** e.g., "Too new, budget impact, no OS data yet"
-- **Competitor Snapshot:** e.g., "Drug A: oral, cheaper; Drug B: same MoA"
-- **Desired Rep Skill:** e.g., "Open-ended questioning, objection-reframe, close"
+- **Product in Focus**
+- **Training Objective(s)**
+- **Key Messages**
+- **Anticipated Objections**
+- **Competitor Snapshot**
+- **Desired Rep Skill**
 """)
 objectives_input = st.text_area(
     "Describe the product and call objectives.",
@@ -760,136 +1054,87 @@ objectives_input = st.text_area(
     help="You can provide partial info, and the AI will help complete it."
 )
 
-if 'persona_details' not in st.session_state:
-    st.session_state.persona_details = None
-if 'final_prompt' not in st.session_state:
-    st.session_state.final_prompt = ""
-if 'assistant_id' not in st.session_state:
-    st.session_state.assistant_id = None
-if 'widget_shown' not in st.session_state:
-    st.session_state.widget_shown = False
+# Session state initialization
+for key in ["persona_details","final_prompt","assistant_id","widget_shown"]:
+    if key not in st.session_state:
+        st.session_state[key] = None if key=="persona_details" else ""
 
+# Build Persona Details
 if not st.session_state.persona_details:
     if st.button("📝 Build Persona Details", type="primary"):
-        # Format the psychographics input string from the slider values
         psychographics_input_str = f"""
-    - Risk Tolerance: {risk_tolerance} (0=Conservative, 1=Bold Experimenter)
-    - Brand Loyalty: {brand_loyalty} (0=Low, 1=High)
-    - Research Orientation: {research_orientation} (0=Anecdote-driven, 1=Data-heavy)
-    - Recognition Need: {recognition_need} (0=Seeks podium, 1=Low-profile)
-    - Patient Empathy: {patient_empathy} (0=Transactional, 1=Advocate)
-    """
-
-        with st.spinner("🤖 The agents are building the persona... This may take a moment."):
-            # This function will be created in the next step inside autoprompt.py
-            persona_state = autoprompt.build_persona_details(
-                header_input=header_input,
-                segment_input=segment_choice,
-                context_input=context_input,
-                psychographics_input=psychographics_input_str,
-                objectives_input=objectives_input
+- Risk Tolerance: {risk_tolerance}
+- Brand Loyalty: {brand_loyalty}
+- Research Orientation: {research_orientation}
+- Recognition Need: {recognition_need}
+- Patient Empathy: {patient_empathy}
+"""
+        with st.spinner("🤖 Building persona..."):
+            st.session_state.persona_details = autoprompt.build_persona_details(
+                header_input, segment_choice, context_input, psychographics_input_str, objectives_input
             )
-            st.session_state.persona_details = persona_state
-        
         st.success("🎉 Persona Details Built!")
 
+# Confirm and Generate Final Prompt
 if st.session_state.persona_details:
     st.markdown("---")
     st.subheader("Confirm Assembled Persona Details")
     st.markdown(st.session_state.persona_details['full_persona_details'])
+    if st.button("🚀 Generate Final Prompt", type="primary"):
+        with st.spinner("🤖 Generating final system prompt..."):
+            st.session_state.final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
+        st.success("✅ System Prompt Generated!")
 
-    if st.button("🚀 Confirm and Generate Final Prompt", type="primary"):
-        with st.spinner("🤖 The writer agents are crafting the final prompt..."):
-            final_prompt = autoprompt.generate_final_prompt(st.session_state.persona_details)
-            st.session_state.final_prompt = final_prompt
-        st.success("🎉 System Prompt Generated!")
-
+# Step 6: Test with Vapi
 if st.session_state.final_prompt:
     st.markdown("---")
-    st.success("✅ Final prompt completed and is ready for use.")
-    
-    st.markdown("---")
     st.header("Step 6: Test with Vapi")
-    
-    # Load keys from .env file
-    vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
-    vapi_public_key = os.getenv("VAPI_PUBLIC_KEY")
 
-    if not vapi_private_key or not vapi_public_key or "YOUR_VAPI" in vapi_private_key:
-        st.warning("⚠️ Vapi keys not found in .env file. Please add them to enable Vapi integration.")
-        st.code("""
-# Add to your .env file:
-VAPI_PRIVATE_KEY=your_private_key_here
-VAPI_PUBLIC_KEY=your_public_key_here
-        """)
+    vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
+    vapi_public_key  = os.getenv("VAPI_PUBLIC_KEY")
+
+    if not (vapi_private_key and vapi_public_key):
+        st.warning("⚠️ Vapi keys not found. Add VAPI_PRIVATE_KEY and VAPI_PUBLIC_KEY to your .env.")
     else:
         col1, col2 = st.columns(2)
-        
         with col1:
-            if st.button("🎙️ Create Vapi Assistant", type="primary", disabled=st.session_state.assistant_id is not None):
+            create_disabled = st.session_state.assistant_id is not None
+            if st.button("🎙️ Create Vapi Assistant", type="primary", disabled=create_disabled):
                 with st.spinner("Creating Vapi assistant..."):
-                    # Use a unique name for the assistant to avoid conflicts
                     assistant_name = f"Persona-Role-Play-{int(time.time())}"
-                    assistant_id = autoprompt.create_vapi_assistant(
+                    st.session_state.assistant_id = autoprompt.create_vapi_assistant(
                         api_key=vapi_private_key,
                         system_prompt=st.session_state.final_prompt,
                         name=assistant_name
                     )
-                    if assistant_id:
-                        st.session_state.assistant_id = assistant_id
-                        st.success(f"✅ Assistant created! ID: {assistant_id}")
-                        st.info("The voice assistant widget will appear in the bottom-right corner.")
-                        # Mostra automaticamente il widget dopo la creazione
+                    if st.session_state.assistant_id:
+                        st.success(f"✅ Assistant created! ID: {st.session_state.assistant_id}")
                         st.session_state.widget_shown = True
-                        st.rerun()
+                        st.experimental_rerun()
                     else:
-                        st.error("❌ Failed to create Vapi assistant. Please check your API keys.")
-        
+                        st.error("❌ Failed to create assistant.")
         with col2:
             if st.session_state.assistant_id:
-                if st.button("🔄 Create New Assistant", help="Create a new assistant with the same prompt"):
+                if st.button("🔄 Create New Assistant", help="Generate a fresh assistant"):
                     st.session_state.assistant_id = None
                     st.session_state.widget_shown = False
-                    st.rerun()
-        
-        # Se l'assistente è stato creato, mostra il widget
+                    st.experimental_rerun()
+
         if st.session_state.assistant_id and st.session_state.widget_shown:
             st.markdown("---")
             st.subheader("🎤 Voice Assistant Ready!")
-            
-            # Informazioni per l'utente
             with st.expander("ℹ️ How to use the voice assistant", expanded=True):
                 st.markdown("""
-                ### Instructions:
-                1. **Look for the blue chat bubble** in the bottom-right corner of the page
-                2. **Click on it** to start the voice conversation
-                3. **Allow microphone access** when prompted by your browser
-                4. **Start speaking** - the assistant will respond in real-time
-                5. **Click the button again** to end the conversation
-                
-                ### Troubleshooting:
-                - **Can't see the widget?** Try refreshing the page (F5)
-                - **Microphone not working?** Check that you're on HTTPS and have granted permissions
-                - **Widget not responding?** Check the browser console for errors (F12)
-                
-                ### Important:
-                - The assistant is configured with your generated persona prompt
-                - The conversation is completely private and secure
-                - You can create a new assistant anytime with the button above
+1. Look for the blue chat bubble in the bottom-right.
+2. Click to start voice conversation.
+3. Allow microphone access.
+4. Speak and listen to the assistant.
+5. Click again to end the call.
                 """)
-            
-            # Embed il widget Vapi
-            embed_vapi_widget(
-                vapi_public_key=vapi_public_key,
-                assistant_id=st.session_state.assistant_id,
-                show_widget=True
-            )
-            
-            # Mostra l'ID dell'assistente per riferimento
+            embed_vapi_widget(vapi_public_key, st.session_state.assistant_id, show_widget=True)
             st.info(f"🤖 Assistant ID: `{st.session_state.assistant_id}`")
-            
-            # Link alla dashboard Vapi
             st.markdown(
                 f"[View in Vapi Dashboard →](https://dashboard.vapi.ai/assistants/{st.session_state.assistant_id})",
                 unsafe_allow_html=True
             )
+
