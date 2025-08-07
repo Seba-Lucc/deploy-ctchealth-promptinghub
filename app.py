@@ -507,6 +507,10 @@ import base64
 import webbrowser
 from pathlib import Path
 import tempfile
+import threading
+import http.server
+import socketserver
+from urllib.parse import quote
 
 load_dotenv()
 
@@ -651,11 +655,6 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
             font-weight: 600;
             color: #667eea;
         }}
-        
-        /* Hide VAPI button initially */
-        .vapi-btn {{
-            display: none !important;
-        }}
     </style>
 </head>
 <body>
@@ -696,11 +695,33 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
     <!-- VAPI Integration Script -->
     <script>
         // Configuration
-        const ASSISTANT_ID = "{assistant_id}";
-        const PUBLIC_KEY = "{public_key}";
-        const PERSONA_NAME = "{persona_name}";
+        var vapiInstance = null;
+        const assistant = "{assistant_id}"; // Substitute with your assistant ID
+        const apiKey = "{public_key}"; // Substitute with your Public key from Vapi Dashboard.
+        const buttonConfig = {{
+            position: "bottom-right",
+            offset: "40px",
+            width: "60px",
+            height: "60px",
+            idle: {{
+                color: "#667eea",
+                type: "pill",
+                title: "🎙️ Talk to {persona_name}",
+                subtitle: "CTC Health Assistant",
+                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`
+            }},
+            loading: {{
+                color: "#ed8936",
+                title: "Connecting...",
+                subtitle: "Please wait"
+            }},
+            active: {{
+                color: "#e53e3e",
+                title: "🔴 Live Call",
+                subtitle: "Tap to end call"
+            }}
+        }}; // Modify this as required
         
-        let vapiInstance = null;
         const statusEl = document.getElementById('status');
         
         function updateStatus(message, className) {{
@@ -708,61 +729,36 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
             statusEl.className = `status ${{className}}`;
         }}
         
-        // Initialize VAPI
+        // VAPI Snippet (directly from documentation)
         (function (d, t) {{
             var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
             g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
             g.defer = true;
             g.async = true;
             s.parentNode.insertBefore(g, s);
-            
             g.onload = function () {{
                 try {{
-                    updateStatus('🚀 Starting voice assistant...', 'loading');
-                    
                     vapiInstance = window.vapiSDK.run({{
-                        apiKey: PUBLIC_KEY,
-                        assistant: ASSISTANT_ID,
-                        config: {{
-                            position: "bottom-right",
-                            offset: "40px",
-                            width: "60px",
-                            height: "60px",
-                            idle: {{
-                                color: "#667eea",
-                                type: "pill",
-                                title: `🎙️ Talk to ${{PERSONA_NAME}}`,
-                                subtitle: "CTC Health Assistant",
-                                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>`
-                            }},
-                            loading: {{
-                                color: "#ed8936",
-                                title: "Connecting...",
-                                subtitle: "Please wait"
-                            }},
-                            active: {{
-                                color: "#e53e3e",
-                                title: "🔴 Live Call",
-                                subtitle: "Tap to end call"
-                            }}
-                        }}
+                        apiKey: apiKey, // mandatory
+                        assistant: assistant, // mandatory
+                        config: buttonConfig, // optional
                     }});
                     
                     if (vapiInstance) {{
                         updateStatus('✅ Voice assistant ready! Look for the button in bottom-right corner.', 'ready');
                         console.log('✅ VAPI initialized successfully');
                         
-                        // Add event listeners
-                        vapiInstance.on('call-start', () => {{
-                            console.log('📞 Call started with', PERSONA_NAME);
+                        // Optional event listeners
+                        vapiInstance.on && vapiInstance.on('call-start', () => {{
+                            console.log('📞 Call started with {persona_name}');
                         }});
                         
-                        vapiInstance.on('call-end', () => {{
+                        vapiInstance.on && vapiInstance.on('call-end', () => {{
                             console.log('📞 Call ended');
                             updateStatus('✅ Voice assistant ready! Click the button to start a new conversation.', 'ready');
                         }});
                         
-                        vapiInstance.on('error', (error) => {{
+                        vapiInstance.on && vapiInstance.on('error', (error) => {{
                             console.error('❌ VAPI Error:', error);
                             updateStatus('❌ Error occurred. Please refresh the page to try again.', 'loading');
                         }});
@@ -782,43 +778,31 @@ def create_test_page(assistant_id, public_key, persona_name="Generated Persona")
                 updateStatus('❌ Failed to load voice system. Please refresh the page.', 'loading');
             }};
             
-            // Show loading message
-            updateStatus('🔄 Loading voice system...', 'loading');
-            
         }})(document, "script");
         
         // Log initialization
         console.log('🏥 CTC Health Assistant Test Page');
-        console.log('👨‍⚕️ Persona:', PERSONA_NAME);
-        console.log('🆔 Assistant ID:', ASSISTANT_ID);
-        console.log('🔑 Public Key:', PUBLIC_KEY.substring(0, 8) + '...');
+        console.log('👨‍⚕️ Persona: {persona_name}');
+        console.log('🆔 Assistant ID:', assistant);
+        console.log('🔑 Public Key:', apiKey.substring(0, 8) + '...');
     </script>
 </body>
 </html>"""
     
     return html_content
 
-def save_test_page(assistant_id, public_key, persona_name):
-    """Salva la pagina di test e restituisce il path"""
+def create_and_open_test_page(assistant_id, public_key, persona_name):
+    """Crea una pagina di test e la apre tramite data URL"""
     
     try:
-        # Crea la directory per le pagine di test se non esiste
-        test_pages_dir = Path("test_pages")
-        test_pages_dir.mkdir(exist_ok=True)
-        
-        # Crea il nome file con timestamp per unicità
-        timestamp = int(time.time())
-        filename = f"ctc_health_test_{timestamp}.html"
-        filepath = test_pages_dir / filename
-        
         # Genera il contenuto HTML
         html_content = create_test_page(assistant_id, public_key, persona_name)
         
-        # Salva il file
-        with open(filepath, 'w', encoding='utf-8') as f:
-            f.write(html_content)
+        # Codifica in base64 per data URL
+        encoded = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
+        data_url = f"data:text/html;base64,{encoded}"
         
-        return str(filepath)
+        return data_url
         
     except Exception as e:
         st.error(f"Errore nella creazione della pagina di test: {str(e)}")
@@ -1065,29 +1049,42 @@ if st.session_state.final_prompt:
                 
                 # Test button
                 if st.button("🎙️ Test Your CTC Health Assistant", type="primary", use_container_width=True):
-                    with st.spinner("🔄 Preparing test page..."):
-                        # Crea e salva la pagina di test
-                        test_page_path = save_test_page(
+                    with st.spinner("🔄 Preparing test interface..."):
+                        # Crea la pagina di test tramite data URL
+                        data_url = create_and_open_test_page(
                             assistant_id=st.session_state.assistant_id,
                             public_key=vapi_public_key,
                             persona_name=st.session_state.persona_name
                         )
                         
-                        if test_page_path:
-                            # Converti il path in URL locale
-                            test_page_url = f"file://{os.path.abspath(test_page_path)}"
+                        if data_url:
+                            st.success("✅ Test interface ready!")
                             
-                            st.success("✅ Test page created successfully!")
-                            st.info("📋 The test page will open in a new browser tab. If it doesn't open automatically, click the link below.")
+                            # Mostra in un nuovo tab usando JavaScript
+                            js_code = f"""
+                            <script>
+                            window.open('{data_url}', '_blank');
+                            </script>
+                            """
                             
-                            # Mostra link e tenta di aprire automaticamente
-                            st.markdown(f"**🔗 [Open Test Page]({test_page_url})**", unsafe_allow_html=True)
+                            # Inject JavaScript per aprire in nuovo tab
+                            components.html(js_code, height=0)
                             
-                            # Tenta di aprire automaticamente
-                            try:
-                                webbrowser.open(test_page_url)
-                                st.success("🚀 Test page opened in browser!")
-                            except:
-                                st.warning("⚠️ Could not open automatically. Please click the link above.")
+                            st.info("📋 The test page should open in a new browser tab. If pop-ups are blocked, click the button below:")
+                            
+                            # Fallback: mostra link cliccabile
+                            st.markdown(f"""
+                            <a href="{data_url}" target="_blank" style="
+                                display: inline-block;
+                                background: #667eea;
+                                color: white;
+                                padding: 12px 24px;
+                                text-decoration: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                margin: 10px 0;
+                            ">🚀 Open Test Page</a>
+                            """, unsafe_allow_html=True)
+                            
                         else:
-                            st.error("❌ Failed to create test page")
+                            st.error("❌ Failed to create test interface")
