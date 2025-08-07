@@ -506,6 +506,7 @@ from dotenv import load_dotenv
 import base64
 import webbrowser
 from pathlib import Path
+import tempfile
 
 load_dotenv()
 
@@ -516,153 +517,254 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-def create_vapi_widget(assistant_id, public_key, persona_name="Generated Persona"):
-    """Create VAPI floating widget"""
-    
-    # JavaScript code for VAPI widget
-    vapi_script = f"""
-    <script>
-        var vapiInstance = null;
-        const assistant = "{assistant_id}"; // Your assistant ID
-        const apiKey = "{public_key}"; // Your Public API key
-        const buttonConfig = {{
-            position: "bottom-right", // "bottom-left", "bottom-right", "top-left", "top-right"
-            offset: "40px", // Offset from the edge
-            width: "60px", // Width of the button
-            height: "60px", // Height of the button
-            idle: {{
-                color: `rgb(93, 254, 202)`,
-                type: "pill", // or "round"
-                title: "🎙️ Chat with {persona_name}",
-                subtitle: "Powered by CTC Health Solution",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22zm0 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>`,
-            }},
-            loading: {{
-                color: `rgb(93, 124, 202)`,
-                title: "Connecting...",
-                subtitle: "Please wait",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a6 6 0 0 0-6 6h2a4 4 0 0 1 4-4z"/></svg>`,
-            }},
-            active: {{
-                color: `rgb(255, 0, 0)`,
-                title: "🔴 Live",
-                subtitle: "Call in progress...",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>`,
-            }},
-        }};
+# ================================
+# NUOVE FUNZIONI PER SOLUZIONE IFRAME
+# ================================
 
-        // Load VAPI SDK
-        (function (d, t) {{
-            var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
-            g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-            g.defer = true;
-            g.async = true;
-            s.parentNode.insertBefore(g, s);
-            
-            g.onload = function () {{
-                try {{
-                    vapiInstance = window.vapiSDK.run({{
-                        apiKey: apiKey, // mandatory
-                        assistant: assistant, // mandatory  
-                        config: buttonConfig, // optional
-                    }});
-                    
-                    console.log('✅ CTC Health Assistant loaded successfully!');
-                    
-                    // Optional: Listen to events
-                    if(vapiInstance) {{
-                        // You can add event listeners here if needed
-                        console.log('🎙️ VAPI instance ready for {persona_name}');
-                    }}
-                }} catch(e) {{
-                    console.error('❌ Error loading VAPI:', e);
-                }}
-            }};
-            
-            g.onerror = function() {{
-                console.error('❌ Failed to load VAPI SDK');
-            }};
-        }})(document, "script");
-    </script>
+def create_vapi_iframe_page(assistant_id, public_key, persona_name="Generated Persona"):
+    """Crea una pagina HTML completa per VAPI che funziona in iframe"""
     
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTC Health Assistant - {persona_name}</title>
     <style>
-        /* Optional: Custom styling for VAPI widget */
-        .vapi-btn {{
-            z-index: 9999 !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #2E86AB 0%, #A23B72 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }}
         
-        /* Add some custom styling to make it more visible */
-        .vapi-btn:hover {{
-            transform: scale(1.05);
-            transition: transform 0.2s ease;
+        .container {{
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }}
+        
+        .title {{
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2rem;
+            font-weight: 700;
+        }}
+        
+        .subtitle {{
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }}
+        
+        .status {{
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            border: none;
+            transition: all 0.3s ease;
+        }}
+        
+        .ready {{ 
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+        }}
+        
+        .calling {{ 
+            background: linear-gradient(135deg, #ed8936, #dd6b20);
+            color: white;
+            animation: pulse 2s infinite;
+        }}
+        
+        .error {{ 
+            background: linear-gradient(135deg, #f56565, #e53e3e);
+            color: white;
+        }}
+        
+        .call-button {{
+            background: linear-gradient(135deg, #2E86AB, #1a365d);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            margin: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 25px rgba(46, 134, 171, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .call-button:hover {{
+            background: linear-gradient(135deg, #1a365d, #2c5282);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(46, 134, 171, 0.4);
+        }}
+        
+        .call-button:active {{
+            transform: translateY(-1px);
+        }}
+        
+        .call-button.calling {{
+            background: linear-gradient(135deg, #e53e3e, #c53030);
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0% {{ transform: scale(1); box-shadow: 0 8px 25px rgba(229, 62, 62, 0.3); }}
+            50% {{ transform: scale(1.05); box-shadow: 0 12px 35px rgba(229, 62, 62, 0.5); }}
+            100% {{ transform: scale(1); box-shadow: 0 8px 25px rgba(229, 62, 62, 0.3); }}
+        }}
+        
+        .transcript {{
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            text-align: left;
+            max-height: 200px;
+            overflow-y: auto;
+            border-left: 4px solid #2E86AB;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }}
+        
+        .transcript h4 {{
+            margin: 0 0 15px 0;
+            color: #2d3748;
+            font-size: 1.1rem;
+        }}
+        
+        .message {{
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.5;
+        }}
+        
+        .user-message {{
+            background: #e6fffa;
+            border-left: 3px solid #38b2ac;
+        }}
+        
+        .assistant-message {{
+            background: #f0fff4;
+            border-left: 3px solid #48bb78;
+        }}
+        
+        .system-message {{
+            background: #fef5e7;
+            border-left: 3px solid #ed8936;
+            font-style: italic;
         }}
     </style>
-    """
-    
-    return vapi_script
-
-def create_vapi_widget_alternative(assistant_id, public_key, persona_name="Generated Persona"):
-    """Alternative VAPI widget that loads inline instead of floating"""
-    
-    vapi_script = f"""
-    <div style="text-align: center; padding: 20px; border: 2px solid #2E86AB; border-radius: 10px; background: #f8f9fa;">
-        <h4 style="color: #2E86AB; margin-bottom: 15px;">🎙️ {persona_name} Assistant</h4>
-        <button id="vapi-call-btn" onclick="startVapiCall()" 
-                style="background: #2E86AB; color: white; border: none; padding: 15px 30px; 
-                       border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold;">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎙️ {persona_name}</h1>
+        <p class="subtitle">CTC Health Voice Assistant</p>
+        
+        <div id="status" class="status ready">
+            🟢 Ready to connect
+        </div>
+        
+        <button id="callButton" class="call-button" onclick="toggleCall()">
             🎙️ Start Voice Call
         </button>
-        <div id="vapi-status" style="margin-top: 10px; font-size: 14px; color: #666;">
-            Ready to connect...
+        
+        <div id="transcript" class="transcript" style="display: none;">
+            <h4>📝 Live Conversation</h4>
+            <div id="transcriptContent"></div>
         </div>
     </div>
 
     <script>
         let vapiInstance = null;
         let isCallActive = false;
+        let isConnecting = false;
         
-        const assistant = "{assistant_id}";
-        const apiKey = "{public_key}";
+        const ASSISTANT_ID = "{assistant_id}";
+        const PUBLIC_KEY = "{public_key}";
+        const PERSONA_NAME = "{persona_name}";
         
-        function updateStatus(message, color = '#666') {{
-            document.getElementById('vapi-status').innerHTML = message;
-            document.getElementById('vapi-status').style.color = color;
+        // Elements
+        const statusEl = document.getElementById('status');
+        const buttonEl = document.getElementById('callButton');
+        const transcriptEl = document.getElementById('transcript');
+        const transcriptContentEl = document.getElementById('transcriptContent');
+        
+        function updateStatus(message, className) {{
+            statusEl.innerHTML = message;
+            statusEl.className = `status ${{className}}`;
         }}
         
-        function updateButton(text, disabled = false) {{
-            const btn = document.getElementById('vapi-call-btn');
-            btn.innerHTML = text;
-            btn.disabled = disabled;
-            btn.style.opacity = disabled ? '0.6' : '1';
+        function updateButton(html, isActive = false) {{
+            buttonEl.innerHTML = html;
+            buttonEl.className = `call-button ${{isActive ? 'calling' : ''}}`;
+            buttonEl.disabled = isConnecting;
         }}
         
-        function startVapiCall() {{
-            if (isCallActive) {{
-                // End call
-                if (vapiInstance && vapiInstance.stop) {{
-                    vapiInstance.stop();
-                }}
-                isCallActive = false;
-                updateButton('🎙️ Start Voice Call');
-                updateStatus('Call ended', '#d32f2f');
-                return;
-            }}
+        function addToTranscript(speaker, text, messageType = 'system') {{
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${{messageType}}-message`;
             
-            updateButton('🔄 Connecting...', true);
-            updateStatus('Connecting to {persona_name}...', '#1976d2');
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `
+                <strong>${{speaker}}:</strong> ${{text}}
+                <div style="font-size: 11px; color: #718096; margin-top: 4px;">${{timestamp}}</div>
+            `;
+            
+            transcriptContentEl.appendChild(messageDiv);
+            transcriptEl.style.display = 'block';
+            transcriptContentEl.scrollTop = transcriptContentEl.scrollHeight;
+        }}
+        
+        function toggleCall() {{
+            if (isCallActive) {{
+                endCall();
+            }} else {{
+                startCall();
+            }}
+        }}
+        
+        function startCall() {{
+            if (isConnecting) return;
+            
+            isConnecting = true;
+            updateStatus('🔄 Connecting to voice system...', 'calling');
+            updateButton('⏳ Connecting...', false);
             
             // Load VAPI SDK if not already loaded
             if (!window.vapiSDK) {{
                 const script = document.createElement('script');
-                script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+                script.src = 'https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js';
+                script.defer = true;
+                script.async = true;
+                
                 script.onload = function() {{
+                    console.log('✅ VAPI SDK loaded successfully');
                     initVapi();
                 }};
+                
                 script.onerror = function() {{
-                    updateStatus('❌ Failed to load voice system', '#d32f2f');
-                    updateButton('🎙️ Start Voice Call');
+                    console.error('❌ Failed to load VAPI SDK');
+                    updateStatus('❌ Failed to load voice system', 'error');
+                    updateButton('🎙️ Start Voice Call', false);
+                    isConnecting = false;
                 }};
+                
                 document.head.appendChild(script);
             }} else {{
                 initVapi();
@@ -671,130 +773,206 @@ def create_vapi_widget_alternative(assistant_id, public_key, persona_name="Gener
         
         function initVapi() {{
             try {{
-                // Create a custom config for inline usage
-                const config = {{
-                    mode: 'inline', // This prevents the floating button
-                }};
+                console.log('🚀 Initializing VAPI with:', {{ assistantId: ASSISTANT_ID, publicKey: PUBLIC_KEY.substring(0, 8) + '...' }});
                 
                 vapiInstance = window.vapiSDK.run({{
-                    apiKey: apiKey,
-                    assistant: assistant,
-                    config: config,
+                    apiKey: PUBLIC_KEY,
+                    assistant: ASSISTANT_ID,
+                    config: {{
+                        // Non usiamo position per evitare floating button
+                    }}
                 }});
                 
                 if (vapiInstance) {{
-                    isCallActive = true;
-                    updateButton('🔴 End Call');
-                    updateStatus('🟢 Call active - speak now!', '#2e7d32');
+                    console.log('✅ VAPI instance created successfully');
                     
-                    // Listen for call end
-                    if (vapiInstance.on) {{
-                        vapiInstance.on('call-end', function() {{
-                            isCallActive = false;
-                            updateButton('🎙️ Start Voice Call');
-                            updateStatus('Call ended', '#d32f2f');
-                        }});
-                    }}
+                    // Setup event listeners
+                    vapiInstance.on('call-start', () => {{
+                        console.log('📞 Call started');
+                        isCallActive = true;
+                        isConnecting = false;
+                        updateStatus('🔴 Call in progress - Speak now!', 'calling');
+                        updateButton('🔴 End Call', true);
+                        addToTranscript('System', 'Voice call started successfully', 'system');
+                    }});
+                    
+                    vapiInstance.on('call-end', () => {{
+                        console.log('📞 Call ended');
+                        endCall();
+                        addToTranscript('System', 'Voice call ended', 'system');
+                    }});
+                    
+                    vapiInstance.on('speech-start', () => {{
+                        console.log('🎤 User started speaking');
+                        updateStatus('🎤 Listening...', 'calling');
+                    }});
+                    
+                    vapiInstance.on('speech-end', () => {{
+                        console.log('🎤 User stopped speaking');
+                        updateStatus('🤖 Assistant is responding...', 'calling');
+                    }});
+                    
+                    vapiInstance.on('message', (message) => {{
+                        console.log('📨 Message received:', message);
+                        
+                        if (message.type === 'transcript' && message.transcript) {{
+                            const speaker = message.role === 'user' ? 'You' : PERSONA_NAME;
+                            const messageType = message.role === 'user' ? 'user' : 'assistant';
+                            addToTranscript(speaker, message.transcript, messageType);
+                        }}
+                    }});
+                    
+                    vapiInstance.on('error', (error) => {{
+                        console.error('❌ VAPI Error:', error);
+                        updateStatus(`❌ Error: ${{error.message || 'Unknown error'}}`, 'error');
+                        endCall();
+                    }});
+                    
+                    // Il call inizia automaticamente quando si crea l'istanza
+                    console.log('⏳ Waiting for call to start...');
+                    
                 }} else {{
-                    throw new Error('Failed to initialize VAPI instance');
+                    throw new Error('Failed to create VAPI instance');
                 }}
                 
-            }} catch(e) {{
-                console.error('VAPI Error:', e);
-                updateStatus('❌ Connection failed: ' + e.message, '#d32f2f');
-                updateButton('🎙️ Start Voice Call');
+            }} catch(error) {{
+                console.error('❌ VAPI Initialization Error:', error);
+                updateStatus(`❌ Connection failed: ${{error.message}}`, 'error');
+                updateButton('🎙️ Start Voice Call', false);
+                isConnecting = false;
             }}
         }}
         
-        console.log('VAPI Alternative Widget loaded for {persona_name}');
-    </script>
-    """
-    
-    return vapi_script
-    """Create VAPI widget embedded directly in Streamlit"""
-    
-    # JavaScript code for VAPI widget
-    vapi_script = f"""
-    <script>
-        var vapiInstance = null;
-        const assistant = "{assistant_id}"; // Your assistant ID
-        const apiKey = "{public_key}"; // Your Public API key
-        const buttonConfig = {{
-            position: "bottom-right", // "bottom-left", "bottom-right", "top-left", "top-right"
-            offset: "40px", // Offset from the edge
-            width: "60px", // Width of the button
-            height: "60px", // Height of the button
-            idle: {{
-                color: `rgb(93, 254, 202)`,
-                type: "pill", // or "round"
-                title: "🎙️ Chat with {persona_name}",
-                subtitle: "Powered by CTC Health Solution",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 1a11 11 0 1 0 0 22 11 11 0 0 0 0-22zm0 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16z"/><path d="M12 6.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm0 9a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>`,
-            }},
-            loading: {{
-                color: `rgb(93, 124, 202)`,
-                title: "Connecting...",
-                subtitle: "Please wait",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6a6 6 0 0 0-6 6h2a4 4 0 0 1 4-4z"/></svg>`,
-            }},
-            active: {{
-                color: `rgb(255, 0, 0)`,
-                title: "🔴 Live",
-                subtitle: "Call in progress...",
-                icon: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" width="24" height="24" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>`,
-            }},
-        }};
-
-        // Load VAPI SDK
-        (function (d, t) {{
-            var g = document.createElement(t), s = d.getElementsByTagName(t)[0];
-            g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-            g.defer = true;
-            g.async = true;
-            s.parentNode.insertBefore(g, s);
-            
-            g.onload = function () {{
+        function endCall() {{
+            if (vapiInstance && vapiInstance.stop) {{
                 try {{
-                    vapiInstance = window.vapiSDK.run({{
-                        apiKey: apiKey, // mandatory
-                        assistant: assistant, // mandatory  
-                        config: buttonConfig, // optional
-                    }});
-                    
-                    console.log('✅ CTC Health Assistant loaded successfully!');
-                    
-                    // Optional: Listen to events
-                    if(vapiInstance) {{
-                        // You can add event listeners here if needed
-                        console.log('🎙️ VAPI instance ready for {persona_name}');
-                    }}
-                }} catch(e) {{
-                    console.error('❌ Error loading VAPI:', e);
+                    vapiInstance.stop();
+                    console.log('🛑 Call stopped successfully');
+                }} catch(error) {{
+                    console.error('Error stopping call:', error);
                 }}
-            }};
+            }}
             
-            g.onerror = function() {{
-                console.error('❌ Failed to load VAPI SDK');
-            }};
-        }})(document, "script");
-    </script>
-    
-    <style>
-        /* Optional: Custom styling for VAPI widget */
-        .vapi-btn {{
-            z-index: 9999 !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            isCallActive = false;
+            isConnecting = false;
+            updateStatus('🟢 Ready to connect', 'ready');
+            updateButton('🎙️ Start Voice Call', false);
         }}
         
-        /* Add some custom styling to make it more visible */
-        .vapi-btn:hover {{
-            transform: scale(1.05);
-            transition: transform 0.2s ease;
-        }}
-    </style>
-    """
+        // Initialize page
+        console.log('🏥 CTC Health Assistant initialized');
+        console.log('👨‍⚕️ Persona:', PERSONA_NAME);
+        console.log('🆔 Assistant ID:', ASSISTANT_ID);
+        
+        // Add some helpful instructions
+        addToTranscript('System', 'Click "Start Voice Call" to begin talking with ' + PERSONA_NAME, 'system');
+    </script>
+</body>
+</html>"""
     
-    return vapi_script
+    return html_content
+
+
+def create_vapi_iframe_solution(assistant_id, public_key, persona_name):
+    """Crea la soluzione iframe completa per Streamlit"""
+    
+    try:
+        # Crea il contenuto HTML
+        html_content = create_vapi_iframe_page(assistant_id, public_key, persona_name)
+        
+        # Codifica in base64 per data URL (questo permette di usare l'HTML direttamente nell'iframe)
+        encoded = base64.b64encode(html_content.encode('utf-8')).decode('utf-8')
+        data_url = f"data:text/html;base64,{encoded}"
+        
+        return data_url
+        
+    except Exception as e:
+        st.error(f"Errore nella creazione dell'iframe: {str(e)}")
+        return None
+
+
+def show_vapi_iframe_solution(assistant_id, public_key, persona_name):
+    """Mostra la soluzione iframe per VAPI in Streamlit"""
+    
+    st.markdown("### 🎙️ Voice Assistant Interface")
+    
+    # Informazioni sulla soluzione
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.info("""
+        **🚀 Soluzione Iframe VAPI**
+        
+        Questa soluzione crea una pagina HTML completa con VAPI integrato e la mostra 
+        in un iframe. Dovrebbe funzionare immediatamente senza problemi di compatibilità!
+        
+        **Funzionalità:**
+        - ✅ Chiamata vocale bidirezionale  
+        - ✅ Trascrizione in tempo reale
+        - ✅ Interfaccia professionale
+        - ✅ Gestione stati della chiamata
+        """)
+    
+    with col2:
+        st.markdown("**🔧 Debug Info:**")
+        st.code(f"""
+Assistant: {assistant_id[:15]}...
+Public Key: {public_key[:15]}...
+Persona: {persona_name}
+        """)
+    
+    # Pulsante per caricare l'iframe
+    if st.button("🎙️ Carica Voice Assistant", type="primary", use_container_width=True):
+        with st.spinner("🔄 Caricamento voice assistant..."):
+            
+            # Crea il data URL per l'iframe
+            data_url = create_vapi_iframe_solution(assistant_id, public_key, persona_name)
+            
+            if data_url:
+                st.success("✅ Voice Assistant caricato con successo!")
+                
+                # Mostra l'iframe
+                components.iframe(data_url, height=650, scrolling=True)
+                
+                # Istruzioni per l'utente
+                st.markdown("""
+                **📋 Come usare il Voice Assistant:**
+                
+                1. **Clicca "Start Voice Call"** nell'interfaccia sopra
+                2. **Permetti l'accesso al microfono** quando richiesto dal browser
+                3. **Parla normalmente** - la conversazione apparirà in tempo reale
+                4. **Clicca "End Call"** per terminare la chiamata
+                
+                **💡 Suggerimenti:**
+                - Usa **Chrome, Firefox o Safari** per migliori performance
+                - Assicurati di avere una **connessione internet stabile**
+                - Se non funziona, **ricarica la pagina** e riprova
+                """)
+                
+            else:
+                st.error("❌ Errore nel caricamento del voice assistant")
+    
+    # Sezione di troubleshooting
+    with st.expander("🔧 Troubleshooting"):
+        st.markdown("""
+        **Se il voice assistant non funziona:**
+        
+        1. **Controlla le chiavi VAPI** - Assicurati che siano valide
+        2. **Permetti microfono** - Il browser deve avere accesso al microfono
+        3. **Usa HTTPS** - Alcune funzioni vocali richiedono connessione sicura
+        4. **Prova browser diverso** - Chrome e Firefox sono più compatibili
+        5. **Controlla console** - Apri Developer Tools (F12) per vedere errori
+        
+        **Configurazioni browser consigliate:**
+        - **Chrome**: Migliore compatibilità
+        - **Firefox**: Buona alternativa  
+        - **Safari**: Funziona ma può essere più lento
+        - **Edge**: Compatibile con limitazioni
+        """)
+
+# ================================
+# IL TUO CODICE ESISTENTE CONTINUA QUI
+# ================================
 
 st.title("🏥 CTC Health Solution - Medical Training Platform")
 st.markdown("""
@@ -1079,36 +1257,14 @@ if st.session_state.final_prompt:
             st.markdown("---")
             st.subheader("🎯 Test Your CTC Health Assistant")
             
-            # Display success message and instructions
+            # Display success message
             col1, col2, col3 = st.columns([1, 2, 1])
             
             with col2:
                 st.success("🎉 Your CTC Health Assistant is ready for testing!")
                 
-                # Instructions
-                with st.expander("📋 Testing Instructions", expanded=True):
-                    st.markdown(f"""
-                    **🚀 How to Test Your {st.session_state.persona_name} Assistant:**
-                    
-                    1. **Look for the voice button** in the bottom-right corner of this page
-                    2. **Allow microphone access** when prompted by your browser
-                    3. **Click the button** to start a voice conversation
-                    4. **Test various scenarios** based on the created persona:
-                       - Ask medical questions relevant to their specialty
-                       - Test their response to treatment options
-                       - Verify consistency with the psychographic profile
-                    5. **End the call** by clicking the button again
-                    
-                    **💡 Best browsers:** Chrome, Firefox, Safari, Edge
-                    
-                    **🔧 Troubleshooting:**
-                    - If you don't see the button, refresh the page
-                    - Make sure your browser allows microphone access
-                    - Check that you're not using an ad blocker that might block the widget
-                    """)
-                
                 # Show assistant details
-                with st.expander("🤖 Assistant Details"):
+                with st.expander("🤖 Assistant Details", expanded=False):
                     st.info(f"""
                     **Assistant ID:** `{st.session_state.assistant_id}`  
                     **Persona:** {st.session_state.persona_name}  
@@ -1116,82 +1272,13 @@ if st.session_state.final_prompt:
                     **Status:** ✅ Active and ready for testing
                     """)
             
-            # Embed the VAPI widget (only if not in demo mode)
+            # Check if we have valid VAPI keys and not in demo mode
             if not demo_mode and vapi_public_key and "YOUR_VAPI" not in vapi_public_key:
-                st.markdown("### 🎙️ Voice Assistant Interface")
-                
-                # Option 1: Try the floating widget
-                with st.expander("🚀 Floating Widget (Recommended)", expanded=True):
-                    st.info("This will add a floating button in the bottom-right corner of your screen.")
-                    
-                    if st.button("Load Floating Widget", key="floating_widget"):
-                        vapi_widget_html = create_vapi_widget(
-                            assistant_id=st.session_state.assistant_id,
-                            public_key=vapi_public_key,
-                            persona_name=st.session_state.persona_name
-                        )
-                        
-                        # Try multiple methods
-                        try:
-                            # Method 1: st.html (if available)
-                            st.html(vapi_widget_html)
-                            st.success("✅ Floating widget loaded!")
-                        except AttributeError:
-                            try:
-                                # Method 2: components.html with height
-                                components.html(vapi_widget_html, height=50, scrolling=False)
-                                st.success("✅ Widget loaded via components!")
-                            except Exception as e:
-                                st.error(f"❌ Could not load floating widget: {str(e)}")
-                
-                # Option 2: Inline widget (more reliable)
-                with st.expander("🎯 Inline Widget (Alternative)", expanded=False):
-                    st.info("This creates a button directly in the page.")
-                    
-                    vapi_inline_html = create_vapi_widget_alternative(
-                        assistant_id=st.session_state.assistant_id,
-                        public_key=vapi_public_key,
-                        persona_name=st.session_state.persona_name
-                    )
-                    
-                    try:
-                        components.html(vapi_inline_html, height=150, scrolling=False)
-                        st.success("✅ Inline widget loaded!")
-                    except Exception as e:
-                        st.error(f"❌ Could not load inline widget: {str(e)}")
-                
-                # Option 3: Manual integration
-                with st.expander("🔧 Manual Integration", expanded=False):
-                    st.markdown("If the widgets above don't work, copy this code and paste it in your browser's developer console:")
-                    
-                    manual_code = f"""
-// Paste this in your browser console (F12)
-const script = document.createElement('script');
-script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-script.onload = function() {{
-    window.vapiSDK.run({{
-        apiKey: "{vapi_public_key}",
-        assistant: "{st.session_state.assistant_id}",
-        config: {{
-            position: "bottom-right",
-            offset: "40px",
-            width: "60px", 
-            height: "60px"
-        }}
-    }});
-}};
-document.head.appendChild(script);
-"""
-                    st.code(manual_code, language='javascript')
-                    
-                # Debug section
-                with st.expander("🐛 Debug Information"):
-                    st.json({
-                        "assistant_id": st.session_state.assistant_id,
-                        "public_key_preview": f"{vapi_public_key[:10]}...",
-                        "persona_name": st.session_state.persona_name,
-                        "streamlit_version": st.__version__
-                    })
-                    
+                # Use the new iframe solution
+                show_vapi_iframe_solution(
+                    assistant_id=st.session_state.assistant_id,
+                    public_key=vapi_public_key,
+                    persona_name=st.session_state.persona_name
+                )
             else:
-                st.info("🎯 **Demo Mode Active** - The voice widget is disabled. Enable real VAPI keys and disable demo mode to test with voice.")
+                st.info("🎯 **Demo Mode Active** - Enable real VAPI keys and disable demo mode to test voice functionality")
