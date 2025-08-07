@@ -26,7 +26,7 @@ app.add_middleware(
 VAPI_KEY = os.getenv("VAPI_PRIVATE_KEY")
 if not VAPI_KEY:
     raise RuntimeError("Imposta la variabile VAPI_PRIVATE_KEY!")
-vapi = Vapi(api_key=VAPI_KEY)
+vapi = Vapi(token=VAPI_KEY)
 
 # Memorizziamo in memoria l’assistant_id creato (durante l’esecuzione)
 _assistant_id = None
