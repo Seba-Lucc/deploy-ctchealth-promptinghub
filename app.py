@@ -896,7 +896,6 @@
 
 
 # app.py - Versione semplificata SENZA backend
-
 import os
 import time
 import streamlit as st
@@ -904,241 +903,247 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 import autoprompt
 from langchain_openai import ChatOpenAI
-import streamlit.components.v1 as components
-load_dotenv()
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Setup base
+# ──────────────────────────────────────────────────────────────────────────────
+load_dotenv()
 st.set_page_config(layout="wide", page_title="Persona Prompt Generator")
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ──────────────────────────────────────────────────────────────────────────────
 def get_segment_options():
-    """Helper to read segment options from the markdown file."""
-    content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
-    return [seg.strip() for seg in content.split('---') if seg.strip()]
-
-
-def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
-    html = f"""
-    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest"></script>
-    <button id="vapi-btn" style="padding:10px 16px;border-radius:10px;border:0;cursor:pointer">
-      🎤 Avvia chiamata
-    </button>
-    <script>
-      const vapi = new window.Vapi("{vapi_public_key}");
-      let active = false;
-      const btn = document.getElementById('vapi-btn');
-
-      btn.addEventListener('click', async () => {{
-        try {{
-          if (!active) {{
-            await vapi.start("{assistant_id}");
-            active = true; btn.textContent = "⏹️ Ferma chiamata";
-          }} else {{
-            vapi.stop(); active = false; btn.textContent = "🎤 Avvia chiamata";
-          }}
-        }} catch (e) {{
-          console.error("Vapi error:", e);
-          alert(e?.message || "Errore Vapi");
-        }}
-      }});
-    </script>
     """
-    components.html(html, height=80, scrolling=False)
+    Legge le opzioni di segmento dal markdown (fallback a lista base se non esiste).
+    """
+    try:
+        content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
+        if not content:
+            raise FileNotFoundError()
+        # Estrai bullet points tipo "- Cardiologist" ecc.
+        opts = []
+        for line in content.splitlines():
+            line = line.strip()
+            if line.startswith("- "):
+                opts.append(line[2:].strip())
+        return opts or ["Cardiologist", "Oncologist", "General Practitioner", "Dermatologist"]
+    except Exception:
+        return ["Cardiologist", "Oncologist", "General Practitioner", "Dermatologist"]
 
-# TITOLO E INTRO
-st.title("👨‍⚕️ CTC Helath - Persona Prompt Generator")
-st.markdown("""
-Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
-to help you create a detailed doctor persona for role-playing scenarios.
-""")
 
-# Aggiungi controllo chiavi all'inizio
+def embed_vapi_button(vapi_public_key: str, assistant_id: str):
+    """
+    Mostra SOLO il bottone Vapi (voice) e lo inietta nel DOM del parent
+    per evitare i limiti dell'iframe di Streamlit (about:srcdoc).
+    Questo elimina i 404 su /embed e l'errore Daily 'The string did not match...'.
+    """
+    components.html(f"""
+    <script>
+      (function() {{
+        const P = window.parent || window;
+
+        function loadSDK(cb) {{
+          if (P.document.getElementById('vapi-sdk-script')) return cb();
+          const s = P.document.createElement('script');
+          s.id = 'vapi-sdk-script';
+          s.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+          s.defer = true; s.async = true;
+          s.onload = cb;
+          P.document.head.appendChild(s);
+        }}
+
+        function run() {{
+          try {{ P.vapiInstance?.destroy?.(); }} catch (e) {{}}
+          const buttonConfig = {{
+            position: "bottom-right",
+            width: "56px",
+            height: "56px"
+          }};
+          P.vapiInstance = P.vapiSDK.run({{
+            apiKey: "{vapi_public_key}",
+            assistant: "{assistant_id}",
+            config: buttonConfig
+          }});
+          P.vapiInstance.on('error',      (e) => console.error('Vapi error:', e));
+          P.vapiInstance.on('call-start', () => console.log('Vapi call started'));
+          P.vapiInstance.on('call-end',   () => console.log('Vapi call ended'));
+        }}
+
+        loadSDK(run);
+      }})();
+    </script>
+    """, height=0, scrolling=False)
+
+
+def show_section_header(step: int, title: str, subtitle: str = ""):
+    st.markdown(f"## Step {step}: {title}")
+    if subtitle:
+        st.caption(subtitle)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Sidebar: chiavi & stato
+# ──────────────────────────────────────────────────────────────────────────────
 st.sidebar.header("🔑 API Keys Status")
 vapi_private_key = os.getenv("VAPI_PRIVATE_KEY", "")
 vapi_public_key = os.getenv("VAPI_PUBLIC_KEY", "")
 openai_key = os.getenv("OPENAI_API_KEY", "")
 
-if vapi_private_key:
-    st.sidebar.success("✅ VAPI_PRIVATE_KEY configured")
+st.sidebar.write("VAPI_PRIVATE_KEY: " + ("✅ set" if vapi_private_key else "❌ missing"))
+st.sidebar.write("VAPI_PUBLIC_KEY: " + ("✅ set" if vapi_public_key else "❌ missing"))
+st.sidebar.write("OPENAI_API_KEY: " + ("✅ set" if openai_key else "❌ missing"))
+
+# Init session state
+for k, v in {
+    "persona_state": None,
+    "persona_details": "",
+    "final_prompt": "",
+    "assistant_id": "",
+}.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 1: Input base per costruzione persona
+# ──────────────────────────────────────────────────────────────────────────────
+show_section_header(1, "Costruisci la Persona", "Compila i campi e genera la bozza della persona (fase 1/2).")
+
+col1, col2 = st.columns(2)
+with col1:
+    header_input = st.text_area(
+        "1) Persona Header (nome, ruolo, età, genere, setting, geografia ecc.)",
+        placeholder="Es: Dr. Jane Doe, Cardiologa 45 anni, Milano, ospedale universitario...",
+        height=160,
+    )
+    segment_options = get_segment_options()
+    segment_input = st.selectbox("2) Segmento (specializzazione)", options=segment_options, index=0)
+
+with col2:
+    context_input = st.text_area(
+        "3) Clinical Context (linee guida, tecnologie, workflow clinici rilevanti)",
+        placeholder="Es: gestione pazienti cronici, uso di sistemi EHR, linee guida ESC 2023...",
+        height=160,
+    )
+    psychographics_input = st.text_area(
+        "4) Psychographics (atteggiamenti, stile cognitivo, valori)",
+        placeholder="Es: evidence-based, avversa al rischio, orientata al paziente...",
+        height=100,
+    )
+    objectives_input = st.text_area(
+        "5) Product/Use-case Objectives (cosa deve saper fare l'assistente)",
+        placeholder="Es: triage sintomi, gestione follow-up, educazione paziente...",
+        height=100,
+    )
+
+colA, colB = st.columns([1, 2])
+with colA:
+    if st.button("🚀 Genera Persona (fase 1)", type="primary"):
+        with st.spinner("Creo la descrizione dettagliata della persona..."):
+            try:
+                # Usa il tuo workflow per la prima metà (build persona)
+                state = autoprompt.build_persona_details(
+                    header_input, segment_input, context_input, psychographics_input, objectives_input
+                )
+                st.session_state.persona_state = state
+                # Provo a leggere un campo testuale comodo da mostrare
+                persona_txt = ""
+                if isinstance(state, dict):
+                    persona_txt = state.get("persona_details") or state.get("persona_header") or ""
+                st.session_state.persona_details = persona_txt
+                st.success("Persona creata! Rivedi e conferma sotto.")
+            except Exception as e:
+                st.error(f"Errore durante la creazione della persona: {e}")
+
+with colB:
+    st.text_area("📄 Anteprima Persona (fase 1)", value=st.session_state.persona_details, height=220)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 2: Conferma e generazione System Prompt finale (fase 2/2)
+# ──────────────────────────────────────────────────────────────────────────────
+show_section_header(2, "Genera System Prompt Finale", "Conferma la persona e lascia lavorare gli agent per il prompt finale.")
+
+colC, colD = st.columns([1, 2])
+with colC:
+    can_generate = st.session_state.persona_state is not None
+    if st.button("✍️ Genera System Prompt", disabled=not can_generate):
+        with st.spinner("Gli agent stanno componendo il system prompt definitivo..."):
+            try:
+                final_state = autoprompt.generate_final_prompt(st.session_state.persona_state)
+                # Estraggo il testo finale se presente
+                final_txt = ""
+                if isinstance(final_state, dict):
+                    final_txt = final_state.get("final_prompt", "") or final_state.get("compiled_prompt", "")
+                # Fallback: se il tuo modulo ha un compilatore esplicito
+                if not final_txt and hasattr(autoprompt, "compile_and_save_prompt"):
+                    try:
+                        final_txt = autoprompt.compile_and_save_prompt(final_state)
+                    except Exception:
+                        pass
+                if not final_txt:
+                    final_txt = "⚠️ Non ho ricevuto il testo del prompt dal workflow. Controlla il modulo 'autoprompt'."
+                st.session_state.final_prompt = final_txt
+                st.success("System prompt generato!")
+            except Exception as e:
+                st.error(f"Errore durante la generazione del system prompt: {e}")
+
+with colD:
+    st.text_area("🧠 System Prompt Finale", value=st.session_state.final_prompt, height=260)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 3: Crea Assistant Vapi
+# ──────────────────────────────────────────────────────────────────────────────
+show_section_header(3, "Crea Assistente Vapi", "Usa il system prompt per creare l'assistente vocale su Vapi.")
+
+colE, colF = st.columns([1, 2])
+with colE:
+    assistant_name = st.text_input("Nome Assistant", value="ctcHealth Voice Assistant")
+    can_create = bool(vapi_private_key and st.session_state.final_prompt.strip())
+    if st.button("📞 Crea Assistente su Vapi", disabled=not can_create):
+        with st.spinner("Creo l'assistente su Vapi..."):
+            try:
+                assistant_id = autoprompt.create_vapi_assistant(
+                    api_key=vapi_private_key,
+                    system_prompt=st.session_state.final_prompt,
+                    name=assistant_name,
+                )
+                if assistant_id:
+                    st.session_state.assistant_id = assistant_id
+                    st.success(f"Assistente creato! ID: {assistant_id}")
+                else:
+                    st.error("Creazione assistant fallita. Controlla le chiavi e la configurazione Vapi.")
+            except Exception as e:
+                st.error(f"Errore durante la creazione dell'assistente: {e}")
+
+with colF:
+    st.text_input("Assistant ID", value=st.session_state.assistant_id, disabled=True)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STEP 4: Test in pagina — SOLO BOTTONE (niente /embed)
+# ──────────────────────────────────────────────────────────────────────────────
+show_section_header(4, "Testa l'Assistente (Voice)", "Comparirà un bottone fluttuante in basso a destra.")
+
+if st.session_state.assistant_id and vapi_public_key:
+    st.info("Premi il bottone fluttuante per avviare/fermare la chiamata.")
+    embed_vapi_button(vapi_public_key, st.session_state.assistant_id)
 else:
-    st.sidebar.error("❌ VAPI_PRIVATE_KEY missing")
-    
-if vapi_public_key:
-    st.sidebar.success("✅ VAPI_PUBLIC_KEY configured")
-else:
-    st.sidebar.error("❌ VAPI_PUBLIC_KEY missing")
-    
-if openai_key:
-    st.sidebar.success("✅ OPENAI_API_KEY configured")
-else:
-    st.sidebar.warning("⚠️ OPENAI_API_KEY missing")
+    st.warning("Serve **Assistant ID** e **VAPI_PUBLIC_KEY** per mostrare il bottone.")
 
-# Step 1: Persona Header
-st.header("Step 1: Persona Header")
-header_input = st.text_area(
-    "Provide basic details for the doctor persona:",
-    "Dr. Anya Sharma, Oncologist, 45, female, private practice, New York",
-    help="You can provide partial info, and the AI will complete it."
-)
+with st.expander("🐛 Troubleshooting"):
+    st.markdown("""
+    - Se **non vedi alcun bottone**, verifica i log console (F12).
+    - In **produzione** usa **HTTPS**: altrimenti il browser non concede il microfono.
+    - Disattiva ad-blocker/VPN che possano bloccare `c.daily.co`.
+    - Verifica che **Public Key** e **Assistant ID** provengano dallo **stesso workspace** Vapi.
+    """)
 
-# Step 2: Customer Segmentation
-st.header("Step 2: Customer Segmentation")
-segment_options = get_segment_options()
-segment_choice = st.radio(
-    "Please select a customer segment for this persona:",
-    options=segment_options,
-    format_func=lambda x: x.split('\n')[0].replace('###','').strip()
-)
-
-# Step 3: Clinical Context
-st.header("Step 3: Clinical Context")
-context_input = st.text_area(
-    "Describe the persona's clinical context:",
-    "Specializes in late-stage lung cancer. Sees a mix of newly diagnosed and treatment-experienced patients.",
-    help="You can provide partial info, and the AI will help complete it."
-)
-
-# Step 4: Psychographics
-st.header("Step 4: Psychographics & Motivations")
-
-def slider_row(label, low_label, high_label, key, default):
-    st.markdown(f"**{label}**")
-    col1, col2, col3 = st.columns([0.5, 4, 1], gap=None)
-    with col1: st.caption(low_label)
-    with col2:
-        val = st.slider(label, 0.0, 1.0, default, step=0.1, 
-                       label_visibility="collapsed", format="%.1f", key=key)
-    with col3: st.caption(high_label)
-    return val
-
-risk_tolerance = slider_row("Risk Tolerance", "Conservative", "Bold", "risk", 0.7)
-brand_loyalty = slider_row("Brand Loyalty", "Low", "High", "loyalty", 0.3)
-research_orientation = slider_row("Research Orientation", "Anecdote", "Data", "research", 0.8)
-recognition_need = slider_row("Recognition Need", "Seeks podium", "Low-profile", "recognition", 0.2)
-patient_empathy = slider_row("Patient Empathy", "Transactional", "Advocate", "empathy", 0.9)
-
-# Step 5: Product & Call Objectives
-st.header("Step 5: Product & Call Objectives")
-objectives_input = st.text_area(
-    "Describe the product and call objectives:",
-    "The product is a new immunotherapy, Xaltorvima. The rep needs to handle objections about its novel mechanism of action.",
-    help="You can provide partial info, and the AI will help complete it."
-)
-
-# Initialize session state
-if "persona_details" not in st.session_state:
-    st.session_state.persona_details = None
-if "final_prompt" not in st.session_state:
-    st.session_state.final_prompt = ""
-if "assistant_id" not in st.session_state:
-    st.session_state.assistant_id = ""
-
-# Build Persona Details
-if not st.session_state.persona_details:
-    if st.button("📝 Build Persona Details", type="primary"):
-        psychographics_input_str = f"""
-- Risk Tolerance: {risk_tolerance}
-- Brand Loyalty: {brand_loyalty}
-- Research Orientation: {research_orientation}
-- Recognition Need: {recognition_need}
-- Patient Empathy: {patient_empathy}
-"""
-        with st.spinner("🤖 Building persona..."):
-            st.session_state.persona_details = autoprompt.build_persona_details(
-                header_input, segment_choice, context_input, 
-                psychographics_input_str, objectives_input
-            )
-        st.success("🎉 Persona Details Built!")
-
-# Generate Final Prompt
-if st.session_state.persona_details:
-    st.markdown("---")
-    st.subheader("Confirm Assembled Persona Details")
-    st.markdown(st.session_state.persona_details['full_persona_details'])
-    
-    if st.button("🚀 Generate Final Prompt", type="primary"):
-        with st.spinner("🤖 Generating final system prompt..."):
-            st.session_state.final_prompt = autoprompt.generate_final_prompt(
-                st.session_state.persona_details
-            )
-        st.success("✅ System Prompt Generated!")
-
-# Step 6: Create Assistant and Test
-if st.session_state.final_prompt:
-    st.markdown("---")
-    st.header("Step 6: Create Vapi Assistant & Test Voice")
-    
-    if not (vapi_private_key and vapi_public_key):
-        st.error("""
-        ⚠️ Missing API Keys! Please add to your .env file:
-        - VAPI_PRIVATE_KEY
-        - VAPI_PUBLIC_KEY
-        """)
-    else:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Create Assistant button
-            if not st.session_state.assistant_id:
-                if st.button("🎙️ Create Vapi Assistant", type="primary"):
-                    with st.spinner("Creating Vapi assistant..."):
-                        assistant_name = f"Persona-{int(time.time())}"
-                        
-                        # CHIAMATA DIRETTA senza backend
-                        st.session_state.assistant_id = autoprompt.create_vapi_assistant(
-                            api_key=vapi_private_key,
-                            system_prompt=st.session_state.final_prompt,
-                            name=assistant_name
-                        )
-                        
-                        if st.session_state.assistant_id:
-                            st.success(f"✅ Assistant created! ID: {st.session_state.assistant_id}")
-                            st.balloons()
-                            st.rerun()
-                        else:
-                            st.error("❌ Failed to create assistant. Check console for errors.")
-            else:
-                st.info(f"✅ Assistant ready: `{st.session_state.assistant_id}`")
-        
-        with col2:
-            # Reset button
-            if st.session_state.assistant_id:
-                if st.button("🔄 Create New Assistant"):
-                    st.session_state.assistant_id = ""
-                    st.rerun()
-        
-        # Show Widget if assistant exists
-        if st.session_state.assistant_id:
-            st.markdown("---")
-            st.subheader("🎤 Voice Widget Active!")
-            
-            # Dashboard link
-            st.markdown(
-                f"[📊 View in Vapi Dashboard](https://dashboard.vapi.ai/assistants/{st.session_state.assistant_id})",
-                unsafe_allow_html=True
-            )
-            
-            # Embed the widget
-            embed_vapi_widget(vapi_public_key, st.session_state.assistant_id)
-            
-            # Instructions
-            st.markdown("""
-            ### 📱 How to use:
-            1. **Look for the blue button** in the bottom-right corner
-            2. **Click it** to start the conversation
-            3. **Allow microphone access** when prompted
-            4. **Speak naturally** with your AI doctor persona
-            5. **Click again** to end the call
-            
-            ### 🐛 Troubleshooting:
-            - Don't see the button? Check browser console (F12)
-            - Button not working? Verify microphone permissions
-            - No response? Check Vapi Dashboard for errors
-            """)
-
-# Footer debug info
+# ──────────────────────────────────────────────────────────────────────────────
+# Footer debug
+# ──────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 with st.expander("🔧 Debug Information"):
     st.json({
-        "persona_built": bool(st.session_state.persona_details),
+        "persona_built": bool(st.session_state.persona_state),
         "prompt_generated": bool(st.session_state.final_prompt),
         "assistant_id": st.session_state.assistant_id,
         "vapi_keys_present": bool(vapi_private_key and vapi_public_key),
