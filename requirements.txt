@@ -1,9 +1,17 @@
+# streamlit
+# langchain-openai
+# langgraph
+# python-dotenv
+# vapi_server_sdk
+# fastapi
+# uvicorn
+# vapi_python
+# python-multipart
+
+# Dipendenze per Streamlit (SENZA vapi-python che causa problemi)
 streamlit
 langchain-openai
 langgraph
 python-dotenv
-vapi_server_sdk
-fastapi
-uvicorn
-vapi_python
-python-multipart
+langsmith
+# RIMOSSO: vapi-python - non compatibile con Streamlit Cloud
