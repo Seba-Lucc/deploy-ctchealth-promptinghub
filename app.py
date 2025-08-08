@@ -916,119 +916,33 @@ def get_segment_options():
 
 def embed_vapi_widget(vapi_public_key, assistant_id):
     """
-    Embeds the Vapi Web Widget in the Streamlit app.
-    VERSIONE CORRETTA con CDN funzionante
+    Versione semplificata con iframe diretto
     """
-    # Debug info
     st.sidebar.markdown("### 🐛 Debug Info")
-    st.sidebar.code(f"Public Key: {vapi_public_key[:20]}...")
     st.sidebar.code(f"Assistant ID: {assistant_id}")
     
-    vapi_html = f"""
-    <div id="vapi-widget-container">
-      <!-- URL CORRETTO per il widget Vapi -->
-      <script 
-        type="module"
-        src="https://unpkg.com/@vapi-ai/web@latest/dist/vapi.js"
-      ></script>
-      <script type="module">
-        console.log('🎯 Loading Vapi SDK...');
-        
-        // Import Vapi dal modulo
-        import {{ Vapi }} from 'https://unpkg.com/@vapi-ai/web@latest/dist/vapi.js';
-        
-        console.log('Public Key:', '{vapi_public_key}'.substring(0, 20) + '...');
-        console.log('Assistant ID:', '{assistant_id}');
-        
-        try {{
-          // Inizializza Vapi
-          const vapi = new Vapi('{vapi_public_key}');
-          
-          // Crea un pulsante personalizzato
-          const button = document.createElement('button');
-          button.innerHTML = '🎙️ Start Voice Call';
-          button.style.cssText = `
-            position: fixed;
-            bottom: 40px;
-            right: 40px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #0084ff;
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 9999;
-          `;
-          
-          let isCallActive = false;
-          
-          button.onclick = async () => {{
-            if (!isCallActive) {{
-              console.log('📞 Starting call...');
-              try {{
-                await vapi.start({{
-                  assistantId: '{assistant_id}',
-                  model: {{
-                    provider: "openai",
-                    model: "gpt-4"
-                  }}
-                }});
-                button.innerHTML = '🔴 End Call';
-                button.style.background = '#ff4444';
-                isCallActive = true;
-                console.log('✅ Call started!');
-              }} catch (error) {{
-                console.error('❌ Error starting call:', error);
-                alert('Error starting call. Check console for details.');
-              }}
-            }} else {{
-              console.log('📞 Ending call...');
-              vapi.stop();
-              button.innerHTML = '🎙️ Start Voice Call';
-              button.style.background = '#0084ff';
-              isCallActive = false;
-              console.log('✅ Call ended!');
-            }}
-          }};
-          
-          document.body.appendChild(button);
-          console.log('✅ Vapi button created successfully!');
-          
-          // Event listeners
-          vapi.on('call-start', () => console.log('📞 Call started'));
-          vapi.on('call-end', () => {{
-            console.log('📞 Call ended');
-            button.innerHTML = '🎙️ Start Voice Call';
-            button.style.background = '#0084ff';
-            isCallActive = false;
-          }});
-          vapi.on('error', (e) => console.error('❌ Vapi error:', e));
-          
-        }} catch (error) {{
-          console.error('❌ Failed to initialize Vapi:', error);
-          alert('Error loading voice widget. Check console for details.');
-        }}
-      </script>
-    </div>
-    """
+    # Usa l'embed diretto di Vapi
+    vapi_url = f"https://vapi.ai/embed?publicKey={vapi_public_key}&assistantId={assistant_id}"
     
-    components.html(vapi_html, height=100, scrolling=False)
+    st.markdown("### 🎤 Voice Assistant")
+    st.markdown(f"""
+    <iframe
+        src="{vapi_url}"
+        width="100%"
+        height="600"
+        frameborder="0"
+        allow="microphone"
+    ></iframe>
+    """, unsafe_allow_html=True)
     
-    # Istruzioni debug
-    st.info("""
-    🔍 **Debug Steps:**
-    1. Look for the blue button in bottom-right corner
-    2. Click to start voice conversation
-    3. Allow microphone access when prompted
-    4. Speak with your AI assistant
-    5. Click the red button to end call
+    # Link alternativo
+    st.markdown(f"""
+    Se il widget non funziona, puoi testare l'assistente qui:
+    [🔗 Apri in Vapi](https://vapi.ai/chat/{assistant_id})
     """)
 
 # TITOLO E INTRO
-st.title("👨‍⚕️ Persona Prompt Generator")
+st.title("👨‍⚕️ CTC Helath - Persona Prompt Generator")
 st.markdown("""
 Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
 to help you create a detailed doctor persona for role-playing scenarios.
