@@ -1,23 +1,9 @@
-# streamlit
-# langchain-openai
-# langgraph
-# python-dotenv
-# vapi_server_sdk
-# fastapi
-# uvicorn
-# vapi_python
-# python-multipart
-
-
-# Dipendenze per Streamlit (senza backend)
 streamlit
 langchain-openai
 langgraph
 python-dotenv
-vapi-python>=0.0.1
-langsmith
-
-# Vapi SDK - prova entrambe le versioni
-vapi-python>=0.0.1
-# oppure se non funziona, usa:
-# vapi-server-sdk>=0.1.0
+vapi_server_sdk
+fastapi
+uvicorn
+vapi_python
+python-multipart
