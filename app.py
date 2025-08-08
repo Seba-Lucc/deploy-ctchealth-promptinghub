@@ -917,7 +917,7 @@ def get_segment_options():
 def embed_vapi_widget(vapi_public_key, assistant_id):
     """
     Embeds the Vapi Web Widget in the Streamlit app.
-    VERSIONE SEMPLIFICATA per debug
+    VERSIONE CORRETTA con CDN funzionante
     """
     # Debug info
     st.sidebar.markdown("### 🐛 Debug Info")
@@ -926,45 +926,92 @@ def embed_vapi_widget(vapi_public_key, assistant_id):
     
     vapi_html = f"""
     <div id="vapi-widget-container">
-      <script src="https://cdn.vapi.ai/widget.js"></script>
-      <script>
-        console.log('🎯 Initializing Vapi Widget...');
+      <!-- URL CORRETTO per il widget Vapi -->
+      <script 
+        type="module"
+        src="https://unpkg.com/@vapi-ai/web@latest/dist/vapi.js"
+      ></script>
+      <script type="module">
+        console.log('🎯 Loading Vapi SDK...');
+        
+        // Import Vapi dal modulo
+        import {{ Vapi }} from 'https://unpkg.com/@vapi-ai/web@latest/dist/vapi.js';
+        
         console.log('Public Key:', '{vapi_public_key}'.substring(0, 20) + '...');
         console.log('Assistant ID:', '{assistant_id}');
         
         try {{
-          const vapiConfig = {{
-            apiKey: '{vapi_public_key}',
-            assistantId: '{assistant_id}',
-            position: 'bottom-right',
-            offset: '40px',
-            width: '50px',
-            height: '50px',
-            buttonColor: '#0084ff',
-            buttonTextColor: '#ffffff'
+          // Inizializza Vapi
+          const vapi = new Vapi('{vapi_public_key}');
+          
+          // Crea un pulsante personalizzato
+          const button = document.createElement('button');
+          button.innerHTML = '🎙️ Start Voice Call';
+          button.style.cssText = `
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #0084ff;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 9999;
+          `;
+          
+          let isCallActive = false;
+          
+          button.onclick = async () => {{
+            if (!isCallActive) {{
+              console.log('📞 Starting call...');
+              try {{
+                await vapi.start({{
+                  assistantId: '{assistant_id}',
+                  model: {{
+                    provider: "openai",
+                    model: "gpt-4"
+                  }}
+                }});
+                button.innerHTML = '🔴 End Call';
+                button.style.background = '#ff4444';
+                isCallActive = true;
+                console.log('✅ Call started!');
+              }} catch (error) {{
+                console.error('❌ Error starting call:', error);
+                alert('Error starting call. Check console for details.');
+              }}
+            }} else {{
+              console.log('📞 Ending call...');
+              vapi.stop();
+              button.innerHTML = '🎙️ Start Voice Call';
+              button.style.background = '#0084ff';
+              isCallActive = false;
+              console.log('✅ Call ended!');
+            }}
           }};
           
-          window.vapiWidget = new Vapi.Widget(vapiConfig);
-          console.log('✅ Vapi Widget initialized successfully!');
+          document.body.appendChild(button);
+          console.log('✅ Vapi button created successfully!');
           
-          // Debug: mostra eventi
-          window.vapiWidget.on('call:start', () => console.log('📞 Call started'));
-          window.vapiWidget.on('call:end', () => console.log('📞 Call ended'));
-          window.vapiWidget.on('error', (e) => console.error('❌ Vapi error:', e));
+          // Event listeners
+          vapi.on('call-start', () => console.log('📞 Call started'));
+          vapi.on('call-end', () => {{
+            console.log('📞 Call ended');
+            button.innerHTML = '🎙️ Start Voice Call';
+            button.style.background = '#0084ff';
+            isCallActive = false;
+          }});
+          vapi.on('error', (e) => console.error('❌ Vapi error:', e));
           
         }} catch (error) {{
-          console.error('❌ Failed to initialize Vapi Widget:', error);
+          console.error('❌ Failed to initialize Vapi:', error);
           alert('Error loading voice widget. Check console for details.');
         }}
       </script>
-      <style>
-        #vapi-widget-container {{
-          position: fixed;
-          bottom: 40px;
-          right: 40px;
-          z-index: 9999;
-        }}
-      </style>
     </div>
     """
     
@@ -973,11 +1020,11 @@ def embed_vapi_widget(vapi_public_key, assistant_id):
     # Istruzioni debug
     st.info("""
     🔍 **Debug Steps:**
-    1. Open browser console (F12 → Console tab)
-    2. Look for "Initializing Vapi Widget..." message
-    3. Check for any red error messages
-    4. Try clicking the blue button in bottom-right corner
-    5. Report any errors you see!
+    1. Look for the blue button in bottom-right corner
+    2. Click to start voice conversation
+    3. Allow microphone access when prompted
+    4. Speak with your AI assistant
+    5. Click the red button to end call
     """)
 
 # TITOLO E INTRO
