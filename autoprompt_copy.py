@@ -63,45 +63,12 @@ def read_file_content(file_path: str) -> str:
         return ""
 
 
-# === Voice helpers (ElevenLabs via Vapi) ===
-VOICE_ID_DEFAULTS = {
-    # ⚠️ Metti qui i tuoi ID di ElevenLabs (o lascia i default comuni)
-    "female": os.getenv("ELEVENLABS_VOICE_ID_FEMALE", "21m00Tcm4TlvDq8ikWAM"),
-    "male":   os.getenv("ELEVENLABS_VOICE_ID_MALE",   "Pi2Zqk51cRysbs4RoCCF"),
-}
-
-def pick_elevenlabs_voice_id(voice_gender: str | None = None, explicit_voice_id: str | None = None) -> str:
-    """
-    Se 'explicit_voice_id' è passato → lo usa.
-    Altrimenti mappa 'voice_gender' (male/female) su un voiceId ElevenLabs.
-    Fallback: female default.
-    """
-    if explicit_voice_id:
-        return explicit_voice_id
-    g = (voice_gender or "").strip().lower()
-    if g in VOICE_ID_DEFAULTS:
-        return VOICE_ID_DEFAULTS[g]
-    return VOICE_ID_DEFAULTS["female"]  # fallback sicuro
-
-
-def create_vapi_assistant(api_key: str, system_prompt: str, name: str,
-                          voice_gender: str | None = None,
-                          voice_id: str | None = None):
+def create_vapi_assistant(api_key: str, system_prompt: str, name: str):
     """
     Creates a new Vapi assistant using the provided system prompt.
-
-    Args:
-        api_key: Vapi private token
-        system_prompt: system message for the LLM
-        name: assistant name
-        voice_gender: "male" | "female" | None  (se None usa fallback)
-        voice_id: opzionale, se vuoi forzare direttamente un voiceId ElevenLabs
     """
     print("--- 📞 Creating Vapi Assistant ---")
     try:
-        chosen_voice_id = pick_elevenlabs_voice_id(voice_gender=voice_gender, explicit_voice_id=voice_id)
-        print(f"🎙️ Using ElevenLabs voiceId: {chosen_voice_id} (gender={voice_gender})")
-
         vapi = Vapi(token=api_key)
         assistant = vapi.assistants.create(
             name=name,
@@ -116,10 +83,9 @@ def create_vapi_assistant(api_key: str, system_prompt: str, name: str,
             },
             voice={
                 "provider": "11labs",
-                "voiceId": chosen_voice_id
-                # opzionale: "model": os.getenv("ELEVENLABS_VOICE_MODEL", "eleven_multilingual_v2")
+                "voiceId": "21m00Tcm4TlvDq8ikWAM" # Default voice, can be changed
             },
-            first_message="Hello, I'm ready to start our role-play session."
+            first_message="Hi, how are you today and what do you want to discuss?"
         )
         print(f"✅ Vapi assistant created successfully. ID: {assistant.id}")
         return assistant.id
@@ -1105,4 +1071,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -3,7 +3,7 @@ import time
 import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
-import autoprompt_copy
+import autoprompt
 from langchain_openai import ChatOpenAI
 import streamlit.components.v1 as components
 load_dotenv()
@@ -12,26 +12,13 @@ st.set_page_config(layout="wide", page_title="Persona Prompt Generator")
 
 def get_segment_options():
     """Helper to read segment options from the markdown file."""
-    content = autoprompt_copy.read_file_content("persona_building_prompts/2customer_segmentation.md")
+    content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
-
-def infer_voice_gender_from_header(text: str) -> str | None:
-    """
-    Undertand if the assistant is 'male'/'female'.
-    Return 'male' | 'female' | None.
-    """
-    t = (text or "").lower()
-    # femminile
-    if any(k in t for k in ["female", "woman", "she/her"]):
-        return "female"
-    # maschile
-    if any(k in t for k in ["male", "man", "he/him"]):
-        return "male"
-    return None
 
 
 def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
-    # 🔧 Modifica ESSENZIALE: iniettiamo lo snippet ufficiale nel parent DOM
+    # 🔧 Modifica ESSENZIALE: niente @vapi-ai/web (che rompe in <script>),
+    # niente iframe; iniettiamo lo snippet ufficiale nel parent DOM
     components.html(f"""
     <script>
       (function() {{
@@ -156,7 +143,7 @@ if not st.session_state.persona_details:
 - Patient Empathy: {patient_empathy}
 """
         with st.spinner("🤖 Building persona..."):
-            st.session_state.persona_details = autoprompt_copy.build_persona_details(
+            st.session_state.persona_details = autoprompt.build_persona_details(
                 header_input, segment_choice, context_input, 
                 psychographics_input_str, objectives_input
             )
@@ -170,7 +157,7 @@ if st.session_state.persona_details:
     
     if st.button("🚀 Generate Final Prompt", type="primary"):
         with st.spinner("🤖 Generating final system prompt..."):
-            st.session_state.final_prompt = autoprompt_copy.generate_final_prompt(
+            st.session_state.final_prompt = autoprompt.generate_final_prompt(
                 st.session_state.persona_details
             )
         st.success("✅ System Prompt Generated!")
@@ -197,14 +184,12 @@ if st.session_state.final_prompt:
                         assistant_name = f"Persona-{int(time.time())}"
                         
                         # CHIAMATA DIRETTA senza backend
-                        voice_gender = infer_voice_gender_from_header(header_input)  # deduce da Step 1 (nessun nuovo widget)
-                        st.session_state.assistant_id = autoprompt_copy.create_vapi_assistant(
+                        st.session_state.assistant_id = autoprompt.create_vapi_assistant(
                             api_key=vapi_private_key,
                             system_prompt=st.session_state.final_prompt,
-                            name=assistant_name,
-                            voice_gender=voice_gender  # 👈 passa male/female se dedotto
+                            name=assistant_name
                         )
-
+                        
                         if st.session_state.assistant_id:
                             st.success(f"✅ Assistant created! ID: {st.session_state.assistant_id}")
                             st.balloons()
@@ -239,3 +224,4 @@ if st.session_state.final_prompt:
 #         "assistant_id": st.session_state.assistant_id,
 #         "vapi_keys_present": bool(vapi_private_key and vapi_public_key),
 #     })
+
