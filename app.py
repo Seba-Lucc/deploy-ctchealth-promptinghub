@@ -57,7 +57,7 @@ def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
     """, height=0, scrolling=False)
 
 # TITOLO E INTRO
-st.title("👨‍⚕️ CTC Helath - Persona Prompt Generator")
+st.title("👨‍⚕️ ctcHealth - Persona Prompt Generator")
 st.markdown("""
 Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
 to help you create a detailed doctor persona for role-playing scenarios.
@@ -83,6 +83,11 @@ segment_choice = st.radio(
     options=segment_options,
     format_func=lambda x: x.split('\n')[0].replace('###','').strip()
 )
+
+# Display the description of the selected segment
+if segment_choice:
+    with st.expander("View Selected Segment Description", expanded=True):
+        st.markdown(segment_choice)
 
 # Step 3: Clinical Context
 st.header("Step 3: Clinical Context")
@@ -174,8 +179,8 @@ if st.session_state.final_prompt:
         with col1:
             # Create Assistant button
             if not st.session_state.assistant_id:
-                if st.button("🎙️ Create CTC Healht Assistant", type="primary"):
-                    with st.spinner("Creating CTC Healht assistant..."):
+                if st.button("🎙️ Create ctcHealth Assistant", type="primary"):
+                    with st.spinner("Creating ctcHealth assistant..."):
                         assistant_name = f"Persona-{int(time.time())}"
                         
                         # CHIAMATA DIRETTA senza backend
@@ -204,7 +209,7 @@ if st.session_state.final_prompt:
         # Show Widget if assistant exists
         if st.session_state.assistant_id:
             st.markdown("---")
-            st.subheader("🎤 Voice Widget Active!")
+            st.subheader("🎤 Now you can start your role play session!")
             
             # Embed the widget (🔧 ora inietta solo il bottone funzionante nel parent)
             embed_vapi_widget(vapi_public_key, st.session_state.assistant_id)
