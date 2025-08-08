@@ -194,12 +194,12 @@ if st.session_state.final_prompt:
             # else:
             #     st.info(f"✅ Assistant ready: `{st.session_state.assistant_id}`")
         
-        with col2:
-            # Reset button
-            if st.session_state.assistant_id:
-                if st.button("🔄 Create New Assistant"):
-                    st.session_state.assistant_id = ""
-                    st.rerun()
+        # with col2:
+        #     # Reset button
+        #     if st.session_state.assistant_id:
+        #         if st.button("🔄 Create New Assistant"):
+        #             st.session_state.assistant_id = ""
+        #             st.rerun()
         
         # Show Widget if assistant exists
         if st.session_state.assistant_id:
