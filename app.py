@@ -1446,9 +1446,9 @@ def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
         function run() {{
           try {{ P.vapiInstance?.destroy?.(); }} catch (e) {{}}
           const buttonConfig = {{
-            position: "bottom-right",
+            position: "bottom",
             width: "56px",
-            height: "56px"
+            height: "64px"
           }};
           P.vapiInstance = P.vapiSDK.run({{
             apiKey: "{vapi_public_key}",
@@ -1471,27 +1471,6 @@ st.markdown("""
 Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
 to help you create a detailed doctor persona for role-playing scenarios.
 """)
-
-# Aggiungi controllo chiavi all'inizio
-st.sidebar.header("🔑 API Keys Status")
-vapi_private_key = os.getenv("VAPI_PRIVATE_KEY", "")
-vapi_public_key = os.getenv("VAPI_PUBLIC_KEY", "")
-openai_key = os.getenv("OPENAI_API_KEY", "")
-
-if vapi_private_key:
-    st.sidebar.success("✅ VAPI_PRIVATE_KEY configured")
-else:
-    st.sidebar.error("❌ VAPI_PRIVATE_KEY missing")
-    
-if vapi_public_key:
-    st.sidebar.success("✅ VAPI_PUBLIC_KEY configured")
-else:
-    st.sidebar.error("❌ VAPI_PUBLIC_KEY missing")
-    
-if openai_key:
-    st.sidebar.success("✅ OPENAI_API_KEY configured")
-else:
-    st.sidebar.warning("⚠️ OPENAI_API_KEY missing")
 
 # Step 1: Persona Header
 st.header("Step 1: Persona Header")
@@ -1586,7 +1565,7 @@ if st.session_state.persona_details:
 # Step 6: Create Assistant and Test
 if st.session_state.final_prompt:
     st.markdown("---")
-    st.header("Step 6: Create Vapi Assistant & Test Voice")
+    st.header("Step 6: Create CTC Health Assistant & Test Voice")
     
     if not (vapi_private_key and vapi_public_key):
         st.error("""
@@ -1600,8 +1579,8 @@ if st.session_state.final_prompt:
         with col1:
             # Create Assistant button
             if not st.session_state.assistant_id:
-                if st.button("🎙️ Create Vapi Assistant", type="primary"):
-                    with st.spinner("Creating Vapi assistant..."):
+                if st.button("🎙️ Create CTC Healht Assistant", type="primary"):
+                    with st.spinner("Creating CTC Healht assistant..."):
                         assistant_name = f"Persona-{int(time.time())}"
                         
                         # CHIAMATA DIRETTA senza backend
@@ -1632,36 +1611,16 @@ if st.session_state.final_prompt:
             st.markdown("---")
             st.subheader("🎤 Voice Widget Active!")
             
-            # Dashboard link
-            st.markdown(
-                f"[📊 View in Vapi Dashboard](https://dashboard.vapi.ai/assistants/{st.session_state.assistant_id})",
-                unsafe_allow_html=True
-            )
-            
             # Embed the widget (🔧 ora inietta solo il bottone funzionante nel parent)
             embed_vapi_widget(vapi_public_key, st.session_state.assistant_id)
             
-            # Instructions
-            st.markdown("""
-            ### 📱 How to use:
-            1. **Look for the blue button** in the bottom-right corner
-            2. **Click it** to start the conversation
-            3. **Allow microphone access** when prompted
-            4. **Speak naturally** with your AI doctor persona
-            5. **Click again** to end the call
-            
-            ### 🐛 Troubleshooting:
-            - Don't see the button? Check browser console (F12)
-            - Button not working? Verify microphone permissions
-            - No response? Check Vapi Dashboard for errors
-            """)
 
 # Footer debug info
-st.markdown("---")
-with st.expander("🔧 Debug Information"):
-    st.json({
-        "persona_built": bool(st.session_state.persona_details),
-        "prompt_generated": bool(st.session_state.final_prompt),
-        "assistant_id": st.session_state.assistant_id,
-        "vapi_keys_present": bool(vapi_private_key and vapi_public_key),
-    })
+# st.markdown("---")
+# with st.expander("🔧 Debug Information"):
+#     st.json({
+#         "persona_built": bool(st.session_state.persona_details),
+#         "prompt_generated": bool(st.session_state.final_prompt),
+#         "assistant_id": st.session_state.assistant_id,
+#         "vapi_keys_present": bool(vapi_private_key and vapi_public_key),
+#     })
