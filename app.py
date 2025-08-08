@@ -1472,6 +1472,26 @@ Welcome to the Persona Prompt Generator! This tool uses a multi-agent system
 to help you create a detailed doctor persona for role-playing scenarios.
 """)
 
+
+vapi_private_key = os.getenv("VAPI_PRIVATE_KEY", "")
+vapi_public_key = os.getenv("VAPI_PUBLIC_KEY", "")
+openai_key = os.getenv("OPENAI_API_KEY", "")
+
+# if vapi_private_key:
+#     st.sidebar.success("✅ VAPI_PRIVATE_KEY configured")
+# else:
+#     st.sidebar.error("❌ VAPI_PRIVATE_KEY missing")
+    
+# if vapi_public_key:
+#     st.sidebar.success("✅ VAPI_PUBLIC_KEY configured")
+# else:
+#     st.sidebar.error("❌ VAPI_PUBLIC_KEY missing")
+    
+# if openai_key:
+#     st.sidebar.success("✅ OPENAI_API_KEY configured")
+# else:
+#     st.sidebar.warning("⚠️ OPENAI_API_KEY missing")
+
 # Step 1: Persona Header
 st.header("Step 1: Persona Header")
 header_input = st.text_area(
