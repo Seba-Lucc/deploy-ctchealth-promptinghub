@@ -30,9 +30,52 @@ def infer_voice_gender_from_header(text: str) -> str | None:
     return None
 
 
+# def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
+#     # 🔧 Modifica ESSENZIALE: iniettiamo lo snippet ufficiale nel parent DOM
+#     components.html(f"""
+#     <script>
+#       (function() {{
+#         const P = window.parent || window;
+
+#         function loadSDK(cb) {{
+#           if (P.document.getElementById('vapi-sdk-script')) return cb();
+#           const s = P.document.createElement('script');
+#           s.id = 'vapi-sdk-script';
+#           s.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+#           s.defer = true; s.async = true;
+#           s.onload = cb;
+#           P.document.head.appendChild(s);
+#         }}
+
+#         function run() {{
+#           try {{ P.vapiInstance?.destroy?.(); }} catch (e) {{}}
+#           const buttonConfig = {{
+#             position: "bottom",
+#             width: "56px",
+#             height: "64px"
+#           }};
+#           P.vapiInstance = P.vapiSDK.run({{
+#             apiKey: "{vapi_public_key}",
+#             assistant: "{assistant_id}",
+#             config: buttonConfig
+#           }});
+#           P.vapiInstance.on('error',      (e) => console.error('Vapi error:', e));
+#           P.vapiInstance.on('call-start', () => console.log('Vapi call started'));
+#           P.vapiInstance.on('call-end',   () => console.log('Vapi call ended'));
+#         }}
+
+#         loadSDK(run);
+#       }})();
+#     </script>
+#     """, height=0, scrolling=False)
+
 def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
-    # 🔧 Modifica ESSENZIALE: iniettiamo lo snippet ufficiale nel parent DOM
     components.html(f"""
+    <div id="ctc-call-container" style="display:flex;justify-content:center;margin-top:12px">
+      <button id="ctc-call-btn" style="padding:10px 16px;border-radius:10px;border:0;cursor:pointer">
+        🎤 Avvia chiamata
+      </button>
+    </div>
     <script>
       (function() {{
         const P = window.parent || window;
@@ -42,32 +85,47 @@ def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
           const s = P.document.createElement('script');
           s.id = 'vapi-sdk-script';
           s.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-          s.defer = true; s.async = true;
-          s.onload = cb;
+          s.defer = true; s.async = true; s.onload = cb;
           P.document.head.appendChild(s);
         }}
 
         function run() {{
           try {{ P.vapiInstance?.destroy?.(); }} catch (e) {{}}
-          const buttonConfig = {{
-            position: "bottom",
-            width: "56px",
-            height: "64px"
-          }};
           P.vapiInstance = P.vapiSDK.run({{
             apiKey: "{vapi_public_key}",
             assistant: "{assistant_id}",
-            config: buttonConfig
+            config: {{ position: "bottom", width: "56px", height: "64px" }}
           }});
-          P.vapiInstance.on('error',      (e) => console.error('Vapi error:', e));
-          P.vapiInstance.on('call-start', () => console.log('Vapi call started'));
-          P.vapiInstance.on('call-end',   () => console.log('Vapi call ended'));
+
+          const btn = document.getElementById('ctc-call-btn');
+          let active = false;
+
+          btn.addEventListener('click', async () => {{
+            try {{
+              if (!active) {{
+                await P.vapiInstance.start("{assistant_id}", {{
+                  firstMessage: "Hello! I’m ready to start our role-play session.",
+                  firstMessageMode: "assistant-speaks-first"
+                }});
+                active = true;
+                btn.textContent = "⏹️ Ferma chiamata";
+              }} else {{
+                P.vapiInstance.stop();
+                active = false;
+                btn.textContent = "🎤 Avvia chiamata";
+              }}
+            }} catch (e) {{
+              console.error("Vapi error:", e);
+              alert(e?.message || "Errore Vapi");
+            }}
+          }});
         }}
 
         loadSDK(run);
       }})();
     </script>
-    """, height=0, scrolling=False)
+    """, height=90, scrolling=False)
+
 
 # TITOLO E INTRO
 st.title("👨‍⚕️ ctcHealth - Persona Prompt Generator")
