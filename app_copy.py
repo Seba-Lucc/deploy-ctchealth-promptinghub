@@ -3,7 +3,7 @@ import time
 import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
-import autoprompt
+import autoprompt_copy
 from langchain_openai import ChatOpenAI
 import streamlit.components.v1 as components
 load_dotenv()

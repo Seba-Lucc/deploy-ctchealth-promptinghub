@@ -119,7 +119,7 @@ def create_vapi_assistant(api_key: str, system_prompt: str, name: str,
                 "voiceId": chosen_voice_id
                 # opzionale: "model": os.getenv("ELEVENLABS_VOICE_MODEL", "eleven_multilingual_v2")
             },
-            first_message="Hi, how are you today and what do you want to discuss?"
+            firstMessage="Hi, how are you today and what do you want to discuss?"
         )
         print(f"✅ Vapi assistant created successfully. ID: {assistant.id}")
         return assistant.id
