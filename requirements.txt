@@ -9,19 +9,13 @@
 # python-multipart
 
 
-# Frontend dependencies
+# Dipendenze per Streamlit (senza backend)
 streamlit
 langchain-openai
 langgraph
 python-dotenv
-streamlit-audiorec
-requests
-
-# Backend dependencies
-fastapi
-uvicorn[standard]
-python-multipart
-pydantic
+vapi-python>=0.0.1
+langsmith
 
 # Vapi SDK - prova entrambe le versioni
 vapi-python>=0.0.1
