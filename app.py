@@ -896,16 +896,17 @@
 
 
 # app.py
+# app.py
 
 import os
 import time
 import base64
+import requests
 
 import streamlit as st
 import streamlit.components.v1 as components
 from dotenv import load_dotenv
 from st_audiorec import st_audiorec
-import requests
 
 import autoprompt
 from langchain_openai import ChatOpenAI
@@ -1090,51 +1091,87 @@ if st.session_state.final_prompt:
     st.markdown("---")
     st.header("Step 6: Test with Vapi")
 
+    # Recupera le chiavi API
     vapi_private_key = os.getenv("VAPI_PRIVATE_KEY")
-    vapi_public_key  = os.getenv("VAPI_PUBLIC_KEY")
+    vapi_public_key = os.getenv("VAPI_PUBLIC_KEY")
+    
+    # URL del backend - usa variabile d'ambiente o fallback
+    backend_url = os.getenv("BACKEND_URL", "")
 
     if not (vapi_private_key and vapi_public_key):
         st.warning("⚠️ Vapi keys not found. Add VAPI_PRIVATE_KEY and VAPI_PUBLIC_KEY to your .env.")
     else:
         col1, col2 = st.columns(2)
         with col1:
-            create_disabled = st.session_state.assistant_id is not None
-            if st.button("🎙️ Create Vapi Assistant", type="primary", disabled=create_disabled):
+            # Rimuovi la condizione che disabilita il pulsante
+            if st.button("🎙️ Create Vapi Assistant", type="primary", disabled=(st.session_state.assistant_id != "")):
                 with st.spinner("Creating Vapi assistant..."):
                     assistant_name = f"Persona-Role-Play-{int(time.time())}"
-                    st.session_state.assistant_id = autoprompt.create_vapi_assistant(
-                        api_key=vapi_private_key,
-                        system_prompt=st.session_state.final_prompt,
-                        name=assistant_name
-                    )
+                    
+                    # Prova prima con il backend se configurato
+                    if backend_url and backend_url != "":
+                        try:
+                            st.info(f"📡 Connecting to backend: {backend_url}")
+                            st.session_state.assistant_id = autoprompt.create_vapi_assistant_via_backend(
+                                backend_url=backend_url,
+                                system_prompt=st.session_state.final_prompt,
+                                name=assistant_name
+                            )
+                        except Exception as e:
+                            st.warning(f"⚠️ Backend connection failed: {e}. Trying direct connection...")
+                            # Fallback alla chiamata diretta
+                            st.session_state.assistant_id = autoprompt.create_vapi_assistant(
+                                api_key=vapi_private_key,
+                                system_prompt=st.session_state.final_prompt,
+                                name=assistant_name
+                            )
+                    else:
+                        # Usa la chiamata diretta se il backend non è configurato
+                        st.info("📡 Using direct Vapi connection...")
+                        st.session_state.assistant_id = autoprompt.create_vapi_assistant(
+                            api_key=vapi_private_key,
+                            system_prompt=st.session_state.final_prompt,
+                            name=assistant_name
+                        )
+                    
                     if st.session_state.assistant_id:
                         st.success(f"✅ Assistant created! ID: {st.session_state.assistant_id}")
                         st.session_state.widget_shown = True
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
-                        st.error("❌ Failed to create assistant.")
+                        st.error("❌ Failed to create assistant. Please check your API keys and try again.")
+                        
         with col2:
             if st.session_state.assistant_id:
                 if st.button("🔄 Create New Assistant", help="Generate a fresh assistant"):
-                    st.session_state.assistant_id = None
+                    st.session_state.assistant_id = ""
                     st.session_state.widget_shown = False
-                    st.experimental_rerun()
+                    st.rerun()
 
+        # Mostra il widget se l'assistente è stato creato
         if st.session_state.assistant_id and st.session_state.widget_shown:
             st.markdown("---")
             st.subheader("🎤 Voice Assistant Ready!")
             with st.expander("ℹ️ How to use the voice assistant", expanded=True):
                 st.markdown("""
-1. Look for the blue chat bubble in the bottom-right.
-2. Click to start voice conversation.
-3. Allow microphone access.
-4. Speak and listen to the assistant.
-5. Click again to end the call.
+1. Look for the blue chat bubble in the bottom-right corner
+2. Click it to start a voice conversation
+3. Allow microphone access when prompted
+4. Speak naturally with the assistant
+5. Click again to end the call
                 """)
+            
+            # Embed the Vapi widget
             embed_vapi_widget(vapi_public_key, st.session_state.assistant_id, show_widget=True)
+            
             st.info(f"🤖 Assistant ID: `{st.session_state.assistant_id}`")
             st.markdown(
                 f"[View in Vapi Dashboard →](https://dashboard.vapi.ai/assistants/{st.session_state.assistant_id})",
                 unsafe_allow_html=True
             )
-
+            
+            # Debug info (rimuovi in produzione)
+            with st.expander("🔧 Debug Information"):
+                st.write("Backend URL:", backend_url if backend_url else "Not configured (using direct connection)")
+                st.write("Assistant Created:", bool(st.session_state.assistant_id))
+                st.write("Widget Shown:", st.session_state.widget_shown)

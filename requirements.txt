@@ -10,8 +10,13 @@
 
 
 
+streamlit
+langchain-openai
+langgraph
+python-dotenv
+vapi-server-sdk
 fastapi
 uvicorn[standard]
-vapi_server_sdk       # SDK server-side Vapi che non dipende da PyAudio
 python-multipart
-streamlit-audiorec 
+requests
+streamlit-audiorec

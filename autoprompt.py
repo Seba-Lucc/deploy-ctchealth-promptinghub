@@ -13,6 +13,7 @@ import re
 import json
 from typing import TypedDict, Dict
 from functools import partial
+import requests
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -62,34 +63,56 @@ def read_file_content(file_path: str) -> str:
         return ""
 
 
-def create_vapi_assistant(api_key: str, system_prompt: str, name: str):
+# def create_vapi_assistant(api_key: str, system_prompt: str, name: str):
+#     """
+#     Creates a new Vapi assistant using the provided system prompt.
+#     """
+#     print("--- 📞 Creating Vapi Assistant ---")
+#     try:
+#         vapi = Vapi(token=api_key)
+#         assistant = vapi.assistants.create(
+#             name=name,
+#             model={
+#                 "provider": "openai",
+#                 "model": "gpt-4o",
+#                 "temperature": 0.7,
+#                 "messages": [{
+#                     "role": "system",
+#                     "content": system_prompt
+#                 }]
+#             },
+#             voice={
+#                 "provider": "11labs",
+#                 "voiceId": "21m00Tcm4TlvDq8ikWAM" # Default voice, can be changed
+#             },
+#             first_message="Hello, I'm ready to start our role-play session."
+#         )
+#         print(f"✅ Vapi assistant created successfully. ID: {assistant.id}")
+#         return assistant.id
+#     except Exception as e:
+#         print(f"❌ Error creating Vapi assistant: {e}")
+#         return None
+
+def create_vapi_assistant_via_backend(backend_url: str, system_prompt: str, name: str):
     """
-    Creates a new Vapi assistant using the provided system prompt.
+    Crea un assistente Vapi tramite il backend FastAPI.
     """
-    print("--- 📞 Creating Vapi Assistant ---")
     try:
-        vapi = Vapi(token=api_key)
-        assistant = vapi.assistants.create(
-            name=name,
-            model={
-                "provider": "openai",
-                "model": "gpt-4o",
-                "temperature": 0.7,
-                "messages": [{
-                    "role": "system",
-                    "content": system_prompt
-                }]
-            },
-            voice={
-                "provider": "11labs",
-                "voiceId": "21m00Tcm4TlvDq8ikWAM" # Default voice, can be changed
-            },
-            first_message="Hello, I'm ready to start our role-play session."
+        response = requests.post(
+            f"{backend_url}/create_assistant/",
+            json={
+                "name": name,
+                "system_prompt": system_prompt
+            }
         )
-        print(f"✅ Vapi assistant created successfully. ID: {assistant.id}")
-        return assistant.id
+        if response.status_code == 200:
+            data = response.json()
+            return data.get("assistant_id")
+        else:
+            print(f"❌ Errore dal backend: {response.status_code}")
+            return None
     except Exception as e:
-        print(f"❌ Error creating Vapi assistant: {e}")
+        print(f"❌ Errore di connessione al backend: {e}")
         return None
 
 
