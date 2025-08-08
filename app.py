@@ -57,9 +57,6 @@ def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
           P.vapiInstance = P.vapiSDK.run({{
             apiKey: "{vapi_public_key}",
             assistant: "{assistant_id}",
-            assistantOverrides: {
-                firstMessage: "Hi, how are you today and what do you want to discuss?"
-            },
             config: buttonConfig
           }});
           P.vapiInstance.on('error',      (e) => console.error('Vapi error:', e));
