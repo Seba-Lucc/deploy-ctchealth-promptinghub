@@ -904,7 +904,7 @@ import streamlit.components.v1 as components
 from dotenv import load_dotenv
 import autoprompt
 from langchain_openai import ChatOpenAI
-
+import streamlit.components.v1 as components
 load_dotenv()
 
 st.set_page_config(layout="wide", page_title="Persona Prompt Generator")
@@ -914,34 +914,33 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-import streamlit.components.v1 as components
 
 def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
     html = f"""
-    <!-- Widget UMD ufficiale -->
-    <script src="https://unpkg.com/@vapi-ai/client-sdk-react/dist/embed/widget.umd.js"
-            async type="text/javascript"></script>
-
-    <!-- Il widget: mostra SOLO il bottone -->
-    <vapi-widget
-      public-key="{vapi_public_key}"
-      assistant-id="{assistant_id}"
-      mode="voice"
-      size="tiny"
-      position="bottom-right">
-    </vapi-widget>
-
-    <!-- Log basilari per capire eventuali errori -->
+    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest"></script>
+    <button id="vapi-btn" style="padding:10px 16px;border-radius:10px;border:0;cursor:pointer">
+      🎤 Avvia chiamata
+    </button>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {{
-        const w = document.querySelector('vapi-widget');
-        w?.addEventListener('error', (e) => console.error('Vapi widget error:', e.detail));
-        w?.addEventListener('call-start', () => console.log('Vapi call started'));
-        w?.addEventListener('call-end', () => console.log('Vapi call ended'));
+      const vapi = new window.Vapi("{vapi_public_key}");
+      let active = false;
+      const btn = document.getElementById('vapi-btn');
+
+      btn.addEventListener('click', async () => {{
+        try {{
+          if (!active) {{
+            await vapi.start("{assistant_id}");
+            active = true; btn.textContent = "⏹️ Ferma chiamata";
+          }} else {{
+            vapi.stop(); active = false; btn.textContent = "🎤 Avvia chiamata";
+          }}
+        }} catch (e) {{
+          console.error("Vapi error:", e);
+          alert(e?.message || "Errore Vapi");
+        }}
       }});
     </script>
     """
-    # Altezza minima: il bottone è "floating", quindi non serve spazio
     components.html(html, height=80, scrolling=False)
 
 # TITOLO E INTRO
