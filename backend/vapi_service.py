@@ -13,7 +13,7 @@ app = FastAPI()
 origins = [
     "http://localhost:8501",          # sviluppo locale
     "https://share.streamlit.io",     # se usi Streamlit Community Cloud
-    "https://<TUO-APP-STREAMLIT>.app" # il dominio definitivo
+    "https://deploy-ctchealth-prompting-generation.streamlit.app" # il dominio definitivo
 ]
 app.add_middleware(
     CORSMiddleware,
