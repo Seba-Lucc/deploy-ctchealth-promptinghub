@@ -914,32 +914,35 @@ def get_segment_options():
     content = autoprompt.read_file_content("persona_building_prompts/2customer_segmentation.md")
     return [seg.strip() for seg in content.split('---') if seg.strip()]
 
-def embed_vapi_widget(vapi_public_key, assistant_id):
+import streamlit.components.v1 as components
+
+def embed_vapi_widget(vapi_public_key: str, assistant_id: str):
+    html = f"""
+    <!-- Widget UMD ufficiale -->
+    <script src="https://unpkg.com/@vapi-ai/client-sdk-react/dist/embed/widget.umd.js"
+            async type="text/javascript"></script>
+
+    <!-- Il widget: mostra SOLO il bottone -->
+    <vapi-widget
+      public-key="{vapi_public_key}"
+      assistant-id="{assistant_id}"
+      mode="voice"
+      size="tiny"
+      position="bottom-right">
+    </vapi-widget>
+
+    <!-- Log basilari per capire eventuali errori -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {{
+        const w = document.querySelector('vapi-widget');
+        w?.addEventListener('error', (e) => console.error('Vapi widget error:', e.detail));
+        w?.addEventListener('call-start', () => console.log('Vapi call started'));
+        w?.addEventListener('call-end', () => console.log('Vapi call ended'));
+      }});
+    </script>
     """
-    Versione semplificata con iframe diretto
-    """
-    st.sidebar.markdown("### 🐛 Debug Info")
-    st.sidebar.code(f"Assistant ID: {assistant_id}")
-    
-    # Usa l'embed diretto di Vapi
-    vapi_url = f"https://vapi.ai/embed?publicKey={vapi_public_key}&assistantId={assistant_id}"
-    
-    st.markdown("### 🎤 Voice Assistant")
-    st.markdown(f"""
-    <iframe
-        src="{vapi_url}"
-        width="100%"
-        height="600"
-        frameborder="0"
-        allow="microphone"
-    ></iframe>
-    """, unsafe_allow_html=True)
-    
-    # Link alternativo
-    st.markdown(f"""
-    Se il widget non funziona, puoi testare l'assistente qui:
-    [🔗 Apri in Vapi](https://vapi.ai/chat/{assistant_id})
-    """)
+    # Altezza minima: il bottone è "floating", quindi non serve spazio
+    components.html(html, height=80, scrolling=False)
 
 # TITOLO E INTRO
 st.title("👨‍⚕️ CTC Helath - Persona Prompt Generator")
